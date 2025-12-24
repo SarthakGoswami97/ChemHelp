@@ -2,11 +2,26 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
+
+// Serve static files with proper MIME types
+app.use(express.static(path.join(__dirname), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.js')) {
+      res.setHeader('Content-Type', 'application/javascript');
+    }
+    if (filePath.endsWith('.css')) {
+      res.setHeader('Content-Type', 'text/css');
+    }
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Content-Type', 'text/html');
+    }
+  }
+}));
 
 // Storage file for saved structures
 const DATA_FILE = path.join(__dirname, 'savedData.json');
@@ -211,7 +226,19 @@ app.get('/api/user/:email/structures', (req, res) => {
 const setupReactionsRoutes = require('./reactions-api');
 setupReactionsRoutes(app);
 
+// Root route handler - serve index.html
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+// Catch-all for 404s - serve index.html for client-side routing
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`🧪 ChemHelp server running at http://localhost:${PORT}`);
 });
+
+module.exports = app;
