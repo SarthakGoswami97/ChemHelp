@@ -1,0 +1,392 @@
+[
+  {
+    "id": "hydrogenation",
+    "name": "Hydrogenation",
+    "category": "Addition",
+    "difficulty": "Easy",
+    "description": "Addition of H2 across C=C or C≡C double/triple bonds. Converts unsaturated hydrocarbons to saturated ones.",
+    "equation": "C=C + H2 → C-C (with H additions)",
+    "conditions": {
+      "temperature": "25-100°C",
+      "pressure": "1-100 atm",
+      "catalyst": "Ni, Pd, or Pt"
+    },
+    "pattern": {
+      "requiresDoubleBond": true,
+      "requiresCarbon": true,
+      "carbonCount": "any"
+    },
+    "products": {
+      "transformation": "Convert C=C to C-C, add H atoms"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Alkene π electrons interact with catalyst"
+      },
+      {
+        "step": 2,
+        "description": "H2 bonds break on catalyst surface"
+      },
+      {
+        "step": 3,
+        "description": "Hydrogen atoms add to both carbons of former double bond"
+      }
+    ]
+  },
+  {
+    "id": "dehydration_alcohol",
+    "name": "Dehydration of Alcohol",
+    "category": "Elimination",
+    "difficulty": "Easy",
+    "description": "Removes water (H2O) from alcohols to form alkenes. R2CH-OH → R2C=C + H2O",
+    "equation": "R-CH2-OH → R-CH=CH2 + H2O",
+    "conditions": {
+      "temperature": "140-180°C",
+      "catalyst": "H2SO4 or H3PO4",
+      "solvent": "None (heat)"
+    },
+    "pattern": {
+      "requiresAlcohol": true,
+      "carbonCount": "2+"
+    },
+    "products": {
+      "transformation": "Remove OH, create C=C double bond"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Acid protonates hydroxyl group"
+      },
+      {
+        "step": 2,
+        "description": "Water departs, leaving carbocation"
+      },
+      {
+        "step": 3,
+        "description": "Neighboring hydrogen is removed, forming alkene"
+      }
+    ]
+  },
+  {
+    "id": "hydration_alkene",
+    "name": "Hydration of Alkene",
+    "category": "Addition",
+    "difficulty": "Easy",
+    "description": "Adds water across C=C to form alcohols. Markovnikov's rule applies.",
+    "equation": "C=C + H2O → CHOH-CH2 or CH2OH-CH",
+    "conditions": {
+      "temperature": "25°C",
+      "catalyst": "H2SO4 or H3PO4",
+      "solvent": "Water or aqueous acid"
+    },
+    "pattern": {
+      "requiresDoubleBond": true,
+      "requiresCarbon": true
+    },
+    "products": {
+      "transformation": "Convert C=C to C-C, add OH and H"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "π electrons attack H+ from acid"
+      },
+      {
+        "step": 2,
+        "description": "Carbocation forms (more substituted carbon)"
+      },
+      {
+        "step": 3,
+        "description": "Water attacks carbocation"
+      },
+      {
+        "step": 4,
+        "description": "Deprotonation gives alcohol"
+      }
+    ]
+  },
+  {
+    "id": "combustion",
+    "name": "Complete Combustion",
+    "category": "Oxidation",
+    "difficulty": "Easy",
+    "description": "Complete combustion of hydrocarbons to CO2 and H2O.",
+    "equation": "CxHy + O2 → CO2 + H2O",
+    "conditions": {
+      "temperature": "High heat (ignition)",
+      "oxygen": "Excess",
+      "catalyst": "Heat/flame"
+    },
+    "pattern": {
+      "requiresCarbon": true,
+      "requiresHydrogen": true
+    },
+    "products": {
+      "CO2": "calculated",
+      "H2O": "calculated"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "C-H bonds break via radical mechanism"
+      },
+      {
+        "step": 2,
+        "description": "Carbon oxidized to CO2"
+      },
+      {
+        "step": 3,
+        "description": "Hydrogen oxidized to H2O"
+      }
+    ]
+  },
+  {
+    "id": "oxidation_primary_alcohol",
+    "name": "Oxidation of Primary Alcohol",
+    "category": "Oxidation",
+    "difficulty": "Medium",
+    "description": "Oxidizes primary alcohols (R-CH2OH) to aldehydes (R-CHO) or carboxylic acids.",
+    "equation": "R-CH2OH → R-CHO (aldehyde) → R-COOH (carboxylic acid)",
+    "conditions": {
+      "temperature": "Room temperature to 60°C",
+      "reagent": "H2CrO4, PCC, or DMP",
+      "solvent": "CH2Cl2 or acetone"
+    },
+    "pattern": {
+      "requiresPrimaryAlcohol": true,
+      "carbonCount": "1+"
+    },
+    "products": {
+      "transformation": "CH2OH becomes CHO (or COOH with excess oxidant)"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Oxidant oxidizes C-H bond"
+      },
+      {
+        "step": 2,
+        "description": "Aldehyde forms (aldehyde stage)"
+      },
+      {
+        "step": 3,
+        "description": "With excess oxidant, aldehyde oxidized to carboxylic acid"
+      }
+    ]
+  },
+  {
+    "id": "oxidation_secondary_alcohol",
+    "name": "Oxidation of Secondary Alcohol",
+    "category": "Oxidation",
+    "difficulty": "Medium",
+    "description": "Oxidizes secondary alcohols (R2CHOH) to ketones (R2C=O).",
+    "equation": "R2CH-OH → R2C=O (ketone)",
+    "conditions": {
+      "temperature": "Room temperature",
+      "reagent": "H2CrO4, PCC, or Jones reagent",
+      "solvent": "CH2Cl2 or acetone"
+    },
+    "pattern": {
+      "requiresSecondaryAlcohol": true,
+      "carbonCount": "2+"
+    },
+    "products": {
+      "transformation": "CHOH becomes C=O (ketone)"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Oxidant oxidizes C-H bond"
+      },
+      {
+        "step": 2,
+        "description": "Ketone forms (stops here - no further oxidation)"
+      }
+    ]
+  },
+  {
+    "id": "esterification",
+    "name": "Fischer Esterification",
+    "category": "Condensation",
+    "difficulty": "Medium",
+    "description": "Carboxylic acid reacts with alcohol to form ester and water.",
+    "equation": "R-COOH + R'-OH ⇌ R-COO-R' + H2O",
+    "conditions": {
+      "temperature": "60-100°C",
+      "catalyst": "H2SO4",
+      "solvent": "None (reactants are solvent)"
+    },
+    "pattern": {
+      "requiresCarboxylic": true,
+      "requiresAlcohol": true
+    },
+    "products": {
+      "ester": "formed",
+      "water": "byproduct"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Acid protonates carboxylic acid"
+      },
+      {
+        "step": 2,
+        "description": "Alcohol attacks carbonyl carbon"
+      },
+      {
+        "step": 3,
+        "description": "Tetrahedral intermediate forms"
+      },
+      {
+        "step": 4,
+        "description": "Water leaves, ester forms"
+      }
+    ]
+  },
+  {
+    "id": "nucleophilic_substitution_sn2",
+    "name": "Nucleophilic Substitution (SN2)",
+    "category": "Substitution",
+    "difficulty": "Medium",
+    "description": "Nucleophile attacks alkyl halide with inversion of stereochemistry (backside attack).",
+    "equation": "R-X + Nu⁻ → R-Nu + X⁻",
+    "conditions": {
+      "temperature": "Room temperature to 60°C",
+      "nucleophile": "OH⁻, CN⁻, Br⁻, I⁻, SH⁻, etc.",
+      "solvent": "Polar aprotic (DMSO, DMF, acetone)"
+    },
+    "pattern": {
+      "requiresAlkylHalide": true,
+      "carbonCount": "1-2 (primary > secondary)"
+    },
+    "products": {
+      "transformation": "Replace halide with nucleophile"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Nucleophile approaches from backside"
+      },
+      {
+        "step": 2,
+        "description": "C-Nu bond forms while C-X bond breaks"
+      },
+      {
+        "step": 3,
+        "description": "Inversion of stereochemistry at chiral center"
+      }
+    ]
+  },
+  {
+    "id": "aldol_condensation",
+    "name": "Aldol Condensation",
+    "category": "C-C Bond Formation",
+    "difficulty": "Hard",
+    "description": "Two aldehydes or ketones react to form β-hydroxy carbonyl compound.",
+    "equation": "R-CHO + R'-CHO → R-CH(OH)-CH(R')-CHO",
+    "conditions": {
+      "temperature": "Room temperature",
+      "catalyst": "NaOH or KOH",
+      "solvent": "Water or ethanol"
+    },
+    "pattern": {
+      "requiresAldehydeOrKetone": true,
+      "hasAlphaHydrogen": true,
+      "carbonCount": "1+"
+    },
+    "products": {
+      "aldol": "β-hydroxy carbonyl"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Base deprotonates α-carbon, forming enolate anion"
+      },
+      {
+        "step": 2,
+        "description": "Enolate attacks carbonyl carbon of second molecule"
+      },
+      {
+        "step": 3,
+        "description": "Alkoxide intermediate forms"
+      },
+      {
+        "step": 4,
+        "description": "Protonation gives β-hydroxy carbonyl (aldol product)"
+      }
+    ]
+  },
+  {
+    "id": "grignard_reaction",
+    "name": "Grignard Reaction",
+    "category": "C-C Bond Formation",
+    "difficulty": "Hard",
+    "description": "Grignard reagent (R-Mg-X) attacks carbonyl to form alcohol.",
+    "equation": "R-Mg-X + R'2C=O → R-CH(O-Mg-X)-R'2 → R-CH(OH)-R'2",
+    "conditions": {
+      "temperature": "0°C to room temperature",
+      "solvent": "Ether or THF (anhydrous)",
+      "atmosphere": "Inert (N2 or Ar)"
+    },
+    "pattern": {
+      "requiresCarbonyl": true,
+      "carbonCount": "1+"
+    },
+    "products": {
+      "alcohol": "primary, secondary, or tertiary"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Grignard reagent is strong nucleophile/carbanion"
+      },
+      {
+        "step": 2,
+        "description": "Attacks electrophilic carbonyl carbon"
+      },
+      {
+        "step": 3,
+        "description": "Alkoxide intermediate with Mg"
+      },
+      {
+        "step": 4,
+        "description": "Aqueous workup protonates to give alcohol"
+      }
+    ]
+  },
+  {
+    "id": "diels_alder",
+    "name": "Diels-Alder Reaction",
+    "category": "C-C Bond Formation",
+    "difficulty": "Hard",
+    "description": "Diene and dienophile undergo [4+2] cycloaddition to form cyclohexene.",
+    "equation": "Diene + Dienophile → Cyclohexene",
+    "conditions": {
+      "temperature": "0°C to 150°C",
+      "solvent": "Toluene, benzene, or no solvent",
+      "catalyst": "Lewis acid (optional)"
+    },
+    "pattern": {
+      "requiresDiene": true,
+      "requiresDienophile": true
+    },
+    "products": {
+      "cyclohexene": "forms six-membered ring"
+    },
+    "mechanism": [
+      {
+        "step": 1,
+        "description": "Diene π orbitals aligned with dienophile"
+      },
+      {
+        "step": 2,
+        "description": "Concerted [4+2] cycloaddition mechanism"
+      },
+      {
+        "step": 3,
+        "description": "Forms new six-membered ring with three π bonds → one π bond"
+      }
+    ]
+  }
+]

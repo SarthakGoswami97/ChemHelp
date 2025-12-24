@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChemHelp - Login</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2542 0%, #1a3a5c 50%, #2d5a8c 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 40px;
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(15, 37, 66, 0.3);
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-logo {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .login-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1a3a5c;
+            margin-bottom: 8px;
+        }
+
+        .login-subtitle {
+            font-size: 0.95rem;
+            color: #64748b;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #1a3a5c;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1.5px solid #cfe0f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #5b6ee1;
+            box-shadow: 0 0 0 3px rgba(91, 110, 225, 0.1);
+        }
+
+        input::placeholder {
+            color: #b0bcc4;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-family: inherit;
+        }
+
+        #loginBtn {
+            background: linear-gradient(135deg, #5b6ee1 0%, #7b8ef5 100%);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(91, 110, 225, 0.3);
+        }
+
+        #loginBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(91, 110, 225, 0.4);
+        }
+
+        #signupBtn {
+            background: linear-gradient(135deg, #ff1744 0%, #ff5a7f 100%);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(255, 23, 68, 0.3);
+        }
+
+        #signupBtn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255, 23, 68, 0.4);
+        }
+
+        .demo-login {
+            text-align: center;
+            padding-top: 24px;
+            border-top: 1px solid #e0e7f1;
+        }
+
+        .demo-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #f0f4ff;
+            color: #5b6ee1;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .demo-btn:hover {
+            background: #e0eaff;
+            transform: translateY(-1px);
+        }
+
+        .error {
+            color: #ff1744;
+            font-size: 0.9rem;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .success {
+            color: #10b981;
+            font-size: 0.9rem;
+            margin-top: 4px;
+            display: none;
+        }
+
+        .toggle-auth {
+            text-align: center;
+            margin-top: 20px;
+            color: #64748b;
+            font-size: 0.95rem;
+        }
+
+        .toggle-auth a {
+            color: #5b6ee1;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .toggle-auth a:hover {
+            color: #7b8ef5;
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 24px;
+                margin: 20px;
+            }
+
+            .login-title {
+                font-size: 1.5rem;
+            }
+
+            .form-actions {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="login-logo">🧪</div>
+            <h1 class="login-title">ChemHelp</h1>
+            <p class="login-subtitle" id="authModeText">Sign in to your account</p>
+        </div>
+
+        <form id="authForm">
+            <div class="form-group" id="nameGroup" style="display: none;">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" placeholder="John Doe" />
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="your@email.com" />
+                <div class="error" id="emailError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="••••••••" />
+                <div class="error" id="passwordError"></div>
+            </div>
+
+            <div class="form-group" id="confirmGroup" style="display: none;">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" placeholder="••••••••" />
+                <div class="error" id="confirmError"></div>
+            </div>
+
+            <div class="form-actions">
+                <button type="button" id="loginBtn">Login</button>
+                <button type="button" id="signupBtn">Sign Up</button>
+            </div>
+        </form>
+
+        <div class="toggle-auth">
+            <span id="toggleText">Don't have an account? <a onclick="toggleAuthMode()">Sign Up</a></span>
+        </div>
+
+        <div class="demo-login">
+            <p style="margin-bottom: 12px; color: #64748b; font-size: 0.9rem;">Test Credentials:</p>
+            <div style="background:#f0f4ff;padding:12px;border-radius:8px;margin-bottom:12px;font-size:0.85rem;color:#1a3a5c;">
+                <div><strong>Email:</strong> <code style="background:#fff;padding:2px 4px;border-radius:3px;">demo@test.com</code></div>
+                <div><strong>Password:</strong> <code style="background:#fff;padding:2px 4px;border-radius:3px;">demo123</code></div>
+            </div>
+            <p style="margin-bottom: 12px; color: #64748b; font-size: 0.9rem;">Or continue as guest:</p>
+            <button type="button" class="demo-btn" onclick="demoLogin()">Continue as Guest</button>
+        </div>
+
+        <div class="error" id="generalError"></div>
+        <div class="success" id="successMsg"></div>
+    </div>
+
+    <script>
+        // Initialize demo user in localStorage if not exists
+        (function() {
+            const demoUser = {
+                id: 1,
+                fullName: 'Demo User',
+                email: 'demo@test.com',
+                password: 'demo123',
+                createdAt: new Date().toISOString(),
+                structures: [],
+                reactions: [],
+                preferences: { theme: 'light', showImplicitH: true },
+                photo: '👤'
+            };
+            
+            const users = JSON.parse(localStorage.getItem('chemhelp_users') || '[]');
+            const demoExists = users.find(u => u.email === 'demo@test.com');
+            if (!demoExists) {
+                users.push(demoUser);
+                localStorage.setItem('chemhelp_users', JSON.stringify(users));
+            }
+        })();
+        
+        let isSignupMode = false;
+
+        function toggleAuthMode() {
+            isSignupMode = !isSignupMode;
+            const nameGroup = document.getElementById('nameGroup');
+            const confirmGroup = document.getElementById('confirmGroup');
+            const toggleText = document.getElementById('toggleText');
+            const authModeText = document.getElementById('authModeText');
+
+            if (isSignupMode) {
+                nameGroup.style.display = 'block';
+                confirmGroup.style.display = 'block';
+                authModeText.textContent = 'Create a new account';
+                toggleText.innerHTML = 'Already have an account? <a onclick="toggleAuthMode()">Login</a>';
+            } else {
+                nameGroup.style.display = 'none';
+                confirmGroup.style.display = 'none';
+                authModeText.textContent = 'Sign in to your account';
+                toggleText.innerHTML = 'Don\'t have an account? <a onclick="toggleAuthMode()">Sign Up</a>';
+            }
+        }
+
+        function validateEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.error').forEach(el => el.style.display = 'none');
+            document.getElementById('successMsg').style.display = 'none';
+        }
+
+        function showError(fieldId, message) {
+            const errorEl = document.getElementById(fieldId);
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        function saveUserToLocalStorage(user) {
+            const users = JSON.parse(localStorage.getItem('chemhelp_users') || '[]');
+            const existingIndex = users.findIndex(u => u.email === user.email);
+            if (existingIndex >= 0) {
+                users[existingIndex] = user;
+            } else {
+                users.push(user);
+            }
+            localStorage.setItem('chemhelp_users', JSON.stringify(users));
+        }
+
+        function getUserFromLocalStorage(email) {
+            const users = JSON.parse(localStorage.getItem('chemhelp_users') || '[]');
+            return users.find(u => u.email === email);
+        }
+
+        function login() {
+            clearErrors();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+
+            if (!email || !password) {
+                showError('generalError', 'Please fill in all fields');
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                showError('emailError', 'Invalid email format');
+                return;
+            }
+
+            const user = getUserFromLocalStorage(email);
+            if (!user || user.password !== password) {
+                showError('generalError', 'Invalid email or password');
+                return;
+            }
+
+            localStorage.setItem('chemhelp_currentUser', JSON.stringify(user));
+            document.getElementById('successMsg').textContent = 'Login successful! Redirecting...';
+            document.getElementById('successMsg').style.display = 'block';
+            setTimeout(() => window.location.href = 'index.html', 1500);
+        }
+
+        async function signup() {
+            clearErrors();
+            const fullName = document.getElementById('fullName').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+
+            if (!fullName || !email || !password || !confirmPassword) {
+                showError('generalError', 'Please fill in all fields');
+                return;
+            }
+
+            if (!validateEmail(email)) {
+                showError('emailError', 'Invalid email format');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError('passwordError', 'Password must be at least 6 characters');
+                return;
+            }
+
+            if (password !== confirmPassword) {
+                showError('confirmError', 'Passwords do not match');
+                return;
+            }
+
+            const existingUser = getUserFromLocalStorage(email);
+            if (existingUser) {
+                showError('emailError', 'Email already registered');
+                return;
+            }
+
+            const newUser = {
+                id: Date.now(),
+                fullName,
+                email,
+                password,
+                createdAt: new Date().toISOString(),
+                structures: [],
+                preferences: {
+                    theme: 'light',
+                    showImplicitH: true
+                }
+            };
+
+            // Also save to server
+            try {
+                const response = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(newUser)
+                });
+                if (!response.ok) {
+                    console.warn('Server registration failed, using local storage only');
+                }
+            } catch (err) {
+                console.warn('Could not connect to server for registration:', err);
+            }
+
+            saveUserToLocalStorage(newUser);
+            localStorage.setItem('chemhelp_currentUser', JSON.stringify(newUser));
+            document.getElementById('successMsg').textContent = 'Account created! Redirecting...';
+            document.getElementById('successMsg').style.display = 'block';
+            setTimeout(() => window.location.href = 'index.html', 1500);
+        }
+
+        function demoLogin() {
+            const demoUser = {
+                id: 'demo',
+                fullName: 'Demo User',
+                email: 'demo@test.com',
+                isDemo: true,
+                structures: [
+                    {
+                        "id": 1,
+                        "name": "Ethanol (CH3CH2OH)",
+                        "createdAt": new Date().toISOString()
+                    },
+                    {
+                        "id": 2,
+                        "name": "Acetone",
+                        "createdAt": new Date().toISOString()
+                    }
+                ],
+                preferences: {
+                    theme: 'light',
+                    showImplicitH: true
+                }
+            };
+            localStorage.setItem('chemhelp_currentUser', JSON.stringify(demoUser));
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('loginBtn').addEventListener('click', () => {
+            if (isSignupMode) {
+                signup();
+            } else {
+                login();
+            }
+        });
+
+        document.getElementById('signupBtn').addEventListener('click', () => {
+            toggleAuthMode();
+        });
+
+        document.getElementById('authForm').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                if (isSignupMode) signup();
+                else login();
+            }
+        });
+    </script>
+</body>
+</html>
