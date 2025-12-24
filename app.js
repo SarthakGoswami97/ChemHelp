@@ -166,6 +166,28 @@ const elementColors = {
     'B': '#FFB5B5'
 };
 
+// Color scheme by element type
+function getElementTypeColor(elementType) {
+    const typeColors = {
+        // Metals - Blue/Gray tones
+        'alkali metal': '#1e90ff',         // Dodger blue
+        'alkaline earth': '#4169e1',       // Royal blue
+        'transition metal': '#6495ed',     // Cornflower blue
+        'lanthanide': '#87ceeb',           // Sky blue
+        'actinide': '#add8e6',             // Light blue
+        'post-transition': '#708090',      // Slate gray
+        
+        // Non-metals - Orange/Red tones
+        'nonmetal': '#ff6b35',             // Orange-red
+        'halogen': '#ff4500',              // Orange-red
+        'noble gas': '#dc143c',            // Crimson red
+        
+        // Metalloids - Green/Teal tones
+        'metalloid': '#20b2aa'             // Light sea green
+    };
+    return typeColors[elementType] || '#cccccc';
+}
+
 // --- Use a map for fast node lookup by id ---
 function buildNodeMap() {
     const map = new Map();
@@ -976,22 +998,22 @@ function drawGrid(){
     ctx.restore();
 }
 function drawNode(n){
-    // Get element color (CPK coloring)
-    const elemColor = elementColors[n.label] || '#FFFFFF';
-    const strokeColor = (n.label === 'H') ? '#666666' : '#333333';
+    // Get element color based on element type
+    const elemInfo = getAtomInfo(n.label);
+    const elemColor = getElementTypeColor(elemInfo.type) || elementColors[n.label] || '#FFFFFF';
+    const strokeColor = '#ffffff';
     
     ctx.fillStyle = elemColor; 
     ctx.strokeStyle = strokeColor; 
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2.5;
     ctx.beginPath(); 
     ctx.arc(n.x,n.y,14,0,Math.PI*2); 
     ctx.fill(); 
     ctx.stroke();
     
     if(showLabels){
-        // Use contrasting text color based on element color
-        const textColor = (n.label === 'H' || n.label === 'F' || n.label === 'S') ? '#000000' : '#FFFFFF';
-        ctx.fillStyle = textColor; 
+        // Use white text for better contrast on colored backgrounds
+        ctx.fillStyle = '#FFFFFF'; 
         ctx.font = 'bold 11px Segoe UI, Arial'; 
         ctx.textAlign = 'center'; 
         ctx.textBaseline = 'middle';
