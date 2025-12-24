@@ -4,11 +4,37 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Database module
+const db = require('./database/db');
+
 // Middleware
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
-// Storage file for saved structures
+// Initialize database on startup
+let dbReady = false;
+let dbInstance = null;
+
+db.initDatabase()
+    .then((database) => {
+        dbReady = true;
+        dbInstance = database;
+        console.log('✅ Database initialized successfully');
+    })
+    .catch(err => {
+        console.error('❌ Failed to initialize database:', err);
+        process.exit(1);
+    });
+
+// Middleware to check if database is ready
+app.use((req, res, next) => {
+    if (!dbReady && !req.path.includes('*.') && req.path !== '/' && req.path !== '/index.html') {
+        return res.status(503).json({ error: 'Database not ready yet' });
+    }
+    next();
+});
+
+// Storage file for saved structures (kept for backward compatibility)
 const DATA_FILE = path.join(__dirname, 'savedData.json');
 
 // Initialize data file if it doesn't exist
@@ -55,10 +81,10 @@ app.get('/api/load', (req, res) => {
     }
 });
 
-// User profiles storage file
+// User authentication routes
 const USERS_FILE = path.join(__dirname, 'users.json');
 
-// Initialize users file if it doesn't exist
+// Keep for backward compatibility
 function initUsersFile() {
     if (!fs.existsSync(USERS_FILE)) {
         fs.writeFileSync(USERS_FILE, JSON.stringify([]));
@@ -68,7 +94,7 @@ function initUsersFile() {
 initUsersFile();
 
 // API endpoint to register new user
-app.post('/api/register', (req, res) => {
+app.post('/api/register', async (req, res) => {
     try {
         const { fullName, email, password } = req.body;
         
@@ -76,134 +102,147 @@ app.post('/api/register', (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        let users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
+        // Create user with database
+        const newUser = await db.createUser(fullName, email, password, null);
         
-        // Check if user already exists
-        if (users.find(u => u.email === email)) {
-            return res.status(409).json({ error: 'User already exists' });
+        res.status(201).json({ success: true, message: 'User registered successfully', user: newUser });
+    } catch (error) {
+        console.error('Error registering user:', error.message);
+        
+        if (error.message.includes('Email already exists')) {
+            return res.status(409).json({ error: 'Email already exists' });
         }
         
-        const newUser = {
-            id: Date.now(),
-            fullName,
-            email,
-            password, // In production, hash this!
-            createdAt: new Date().toISOString(),
-            structures: [],
-            preferences: {
-                theme: 'light',
-                showImplicitH: true
-            }
-        };
+        res.status(500).json({ error: 'Failed to register user', details: error.message });
+    }
+});
+
+// API endpoint to login user
+app.post('/api/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
         
-        users.push(newUser);
-        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Missing email or password' });
+        }
         
-        res.status(201).json({ success: true, message: 'User registered successfully' });
+        const user = await db.getUserByEmail(email);
+        
+        if (!user) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        // Verify password
+        const isPasswordValid = await db.verifyPassword(password, user.password);
+        
+        if (!isPasswordValid) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        // Return user data without password
+        const { password: _, ...userProfile } = user;
+        res.json({ success: true, user: userProfile });
     } catch (error) {
-        console.error('Error registering user:', error);
-        res.status(500).json({ error: 'Failed to register user' });
+        console.error('Error logging in:', error.message);
+        res.status(500).json({ error: 'Login failed', details: error.message });
     }
 });
 
 // API endpoint to get user profile
-app.get('/api/user/:email', (req, res) => {
+app.get('/api/user/:email', async (req, res) => {
     try {
         const { email } = req.params;
-        const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
-        const user = users.find(u => u.email === email);
+        const user = await db.getUserByEmail(email);
         
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
         
+        // Get user structures
+        const structures = await db.getUserStructures(user.id);
+        const reactions = await db.getUserReactions(user.id);
+        
         // Don't send password
         const { password, ...userProfile } = user;
-        res.json(userProfile);
+        res.json({
+            ...userProfile,
+            structures,
+            reactions
+        });
     } catch (error) {
-        console.error('Error fetching user:', error);
-        res.status(500).json({ error: 'Failed to fetch user profile' });
+        console.error('Error fetching user:', error.message);
+        res.status(500).json({ error: 'Failed to fetch user profile', details: error.message });
     }
 });
 
 // API endpoint to update user profile
-app.post('/api/user/:email/update', (req, res) => {
+app.post('/api/user/:email/profile-update', async (req, res) => {
     try {
         const { email } = req.params;
-        const { fullName, preferences } = req.body;
+        const { fullName, photo } = req.body;
         
-        let users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
-        const userIndex = users.findIndex(u => u.email === email);
-        
-        if (userIndex === -1) {
+        // Check if user exists
+        const user = await db.getUserByEmail(email);
+        if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        // Update allowed fields
-        if (fullName) users[userIndex].fullName = fullName;
-        if (preferences) users[userIndex].preferences = { ...users[userIndex].preferences, ...preferences };
-        users[userIndex].updatedAt = new Date().toISOString();
+        // Update profile
+        await db.updateUserProfile(email, fullName || user.fullName, photo || user.photo);
         
-        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+        // Get updated user
+        const updatedUser = await db.getUserByEmail(email);
+        const { password, ...userProfile } = updatedUser;
         
-        const { password, ...userProfile } = users[userIndex];
         res.json({ success: true, user: userProfile });
     } catch (error) {
-        console.error('Error updating user:', error);
-        res.status(500).json({ error: 'Failed to update user profile' });
+        console.error('Error updating user:', error.message);
+        res.status(500).json({ error: 'Failed to update user profile', details: error.message });
     }
 });
 
 // API endpoint to save a structure for user
-app.post('/api/user/:email/save-structure', (req, res) => {
+app.post('/api/user/:email/save-structure', async (req, res) => {
     try {
         const { email } = req.params;
         const { name, nodes, bonds } = req.body;
         
-        let users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
-        const userIndex = users.findIndex(u => u.email === email);
-        
-        if (userIndex === -1) {
+        const user = await db.getUserByEmail(email);
+        if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        if (!users[userIndex].structures) {
-            users[userIndex].structures = [];
-        }
-        
-        const structure = {
-            id: Date.now(),
-            name: name || `Structure ${users[userIndex].structures.length + 1}`,
+        const structureData = {
             nodes,
             bonds,
-            createdAt: new Date().toISOString()
+            savedAt: new Date().toISOString()
         };
         
-        users[userIndex].structures.push(structure);
-        fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+        const structure = await db.saveStructure(user.id, name || 'Untitled Structure', structureData);
+        const structures = await db.getUserStructures(user.id);
         
-        res.json({ success: true, structure, totalStructures: users[userIndex].structures.length });
+        res.json({ success: true, structure, totalStructures: structures.length });
     } catch (error) {
-        console.error('Error saving structure:', error);
-        res.status(500).json({ error: 'Failed to save structure' });
+        console.error('Error saving structure:', error.message);
+        res.status(500).json({ error: 'Failed to save structure', details: error.message });
     }
 });
 
 // API endpoint to get user structures
-app.get('/api/user/:email/structures', (req, res) => {
+app.get('/api/user/:email/structures', async (req, res) => {
     try {
         const { email } = req.params;
-        const users = JSON.parse(fs.readFileSync(USERS_FILE, 'utf-8'));
-        const user = users.find(u => u.email === email);
+        const user = await db.getUserByEmail(email);
         
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
         
-        res.json({ structures: user.structures || [] });
+        const structures = await db.getUserStructures(user.id);
+        res.json({ structures });
     } catch (error) {
-        console.error('Error fetching structures:', error);
-        res.status(500).json({ error: 'Failed to fetch structures' });
+        console.error('Error fetching structures:', error.message);
+        res.status(500).json({ error: 'Failed to fetch structures', details: error.message });
     }
 });
 
@@ -221,7 +260,7 @@ app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Start server
-app.listen(PORT, () => {
+// Start server - only after app is fully configured
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`🧪 ChemHelp server running at http://localhost:${PORT}`);
 });

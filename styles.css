@@ -574,6 +574,17 @@ body.dark-mode .dropdown {
     border-color: rgba(0, 102, 204, 0.3);
 }
 
+body.dark-mode .menu-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+    color: #e0e0e0;
+}
+
+body.dark-mode .menu-btn:hover {
+    background: rgba(0, 102, 204, 0.2);
+    border-color: rgba(0, 102, 204, 0.4);
+}
+
 /* Notification Styles */
 .notification {
     padding: 16px 20px;

@@ -1,0 +1,49 @@
+[
+  {
+    "id": 1734966000000,
+    "fullName": "Demo User",
+    "email": "demo@test.com",
+    "password": "demo123",
+    "createdAt": "2025-12-23T00:00:00.000Z",
+    "structures": [
+      {
+        "id": 1,
+        "name": "Ethanol (CH3CH2OH)",
+        "nodes": [
+          {"id": 1, "x": 100, "y": 100, "label": "C"},
+          {"id": 2, "x": 150, "y": 100, "label": "C"},
+          {"id": 3, "x": 200, "y": 100, "label": "O"},
+          {"id": 4, "x": 200, "y": 150, "label": "H"}
+        ],
+        "bonds": [
+          {"aId": 1, "bId": 2, "order": 1},
+          {"aId": 2, "bId": 3, "order": 1},
+          {"aId": 3, "bId": 4, "order": 1}
+        ],
+        "createdAt": "2025-12-23T00:00:00.000Z"
+      },
+      {
+        "id": 2,
+        "name": "Acetone",
+        "nodes": [
+          {"id": 1, "x": 100, "y": 100, "label": "C"},
+          {"id": 2, "x": 150, "y": 100, "label": "C"},
+          {"id": 3, "x": 200, "y": 100, "label": "C"},
+          {"id": 4, "x": 150, "y": 50, "label": "O"}
+        ],
+        "bonds": [
+          {"aId": 1, "bId": 2, "order": 1},
+          {"aId": 2, "bId": 3, "order": 1},
+          {"aId": 2, "bId": 4, "order": 2}
+        ],
+        "createdAt": "2025-12-23T00:00:00.000Z"
+      }
+    ],
+    "reactions": [],
+    "preferences": {
+      "theme": "light",
+      "showImplicitH": true
+    },
+    "updatedAt": "2025-12-23T00:00:00.000Z"
+  }
+]
