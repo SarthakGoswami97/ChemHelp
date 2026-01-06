@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <title>ChemHelp</title>
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="css/styles.css">
 <script>
     // Check if user is logged in
     if (!localStorage.getItem('chemhelp_currentUser')) {
@@ -59,7 +59,7 @@
         <div class="title">⚛️ ChemHelp</div>
         <div style="flex:1"></div>
         <!-- Dark Mode Toggle -->
-        <button id="darkModeToggle" class="menu-btn" style="background:rgba(0,102,204,0.15);border:1.5px solid rgba(0,102,204,0.3);" title="Toggle dark mode">🌓</button>
+        <button id="darkModeToggle" onclick="toggleDarkMode()" class="menu-btn" style="background:rgba(0,102,204,0.15);border:1.5px solid rgba(0,102,204,0.3);" title="Toggle dark mode">🌓</button>
         <!-- Implicit H Toggle -->
         <button id="implicitHToggle" class="menu-btn" style="background:rgba(0,102,204,0.15);border:1.5px solid rgba(0,102,204,0.3);" title="Toggle implicit hydrogens">H: ON</button>
         <!-- User Profile -->
@@ -83,22 +83,30 @@
             
             <!-- Photo Section -->
             <div style="text-align:center;margin-bottom:24px;">
-                <div id="profilePhoto" style="font-size:64px;margin-bottom:12px;height:100px;display:flex;align-items:center;justify-content:center;background:#f0f4ff;border-radius:10px;">👤</div>
+                <div id="profilePhoto" style="font-size:64px;margin-bottom:12px;height:120px;width:120px;display:flex;align-items:center;justify-content:center;background:#f0f4ff;border-radius:50%;margin:0 auto 12px auto;border:3px solid #5b6ee1;">👤</div>
                 <input type="file" id="photoUpload" accept="image/*" style="display:none;" onchange="handlePhotoUpload(event)">
                 <button onclick="document.getElementById('photoUpload').click()" style="padding:8px 16px;background:#5b6ee1;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:0.9rem;font-weight:600;">
-                    Change Photo
+                    📷 Change Photo
                 </button>
+                <p id="photoStatus" style="font-size:0.8rem;color:#888;margin-top:8px;"></p>
+            </div>
+            
+            <!-- Editable Name -->
+            <div style="margin-bottom:16px;">
+                <label style="display:block;font-weight:600;margin-bottom:4px;color:#1a3a5c;">Full Name:</label>
+                <input type="text" id="profileNameInput" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:8px;font-size:1rem;box-sizing:border-box;" placeholder="Your name">
             </div>
             
             <div id="profileInfo" style="margin-bottom:24px;padding:16px;background:#f0f4ff;border-radius:10px;">
-                <p style="margin:0 0 8px 0;"><strong>Name:</strong> <span id="profileName">—</span></p>
                 <p style="margin:0 0 8px 0;"><strong>Email:</strong> <span id="profileEmail">—</span></p>
-                <p style="margin:0 0 8px 0;"><strong>Logged in as:</strong> <span id="loggedInAs" style="color:#ff6b6b;font-weight:600;">—</span></p>
+                <p style="margin:0 0 8px 0;"><strong>Logged in as:</strong> <span id="loggedInAs" style="color:#0066cc;font-weight:600;">—</span></p>
                 <p style="margin:0;"><strong>Structures Saved:</strong> <span id="profileStructures">0</span></p>
             </div>
-            <div style="display:flex;gap:12px;">
-                <button onclick="closeProfileModal()" style="flex:1;padding:10px;background:#e0eaff;color:#5b6ee1;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Close</button>
-                <button onclick="doLogout()" style="flex:1;padding:10px;background:linear-gradient(135deg,#ff1744 0%,#ff5a7f 100%);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Logout</button>
+            
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <button onclick="saveProfile()" style="flex:2;padding:12px;background:linear-gradient(135deg,#0066cc 0%,#0088ff 100%);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:1rem;">💾 Save Profile</button>
+                <button onclick="closeProfileModal()" style="flex:1;padding:12px;background:#e0eaff;color:#5b6ee1;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Close</button>
+                <button onclick="doLogout()" style="flex:1;padding:12px;background:linear-gradient(135deg,#ff1744 0%,#ff5a7f 100%);color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;">Logout</button>
             </div>
         </div>
     </div>
@@ -226,7 +234,6 @@
 
     <input id="fileInput" type="file" accept=".json" style="display:none">
 
-    
-    <script src="app.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>

@@ -3,8 +3,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Load reactions database
-const reactionsDb = JSON.parse(fs.readFileSync(path.join(__dirname, 'reactions.json'), 'utf-8'));
+// Load reactions database - path relative to project root
+const reactionsDb = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'reactions.json'), 'utf-8'));
 
 module.exports = function setupReactionsRoutes(app) {
     

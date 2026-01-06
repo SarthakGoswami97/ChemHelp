@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Environment variables (contains API keys!)
+.env
+.env.local
+.env.*.local
+
+# Database files (optional - uncomment if you don't want to track)
+# database/*.db
+
+# Uploads
+uploads/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+
+# Backup files
+*.backup
+backups/

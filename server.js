@@ -1,3 +1,6 @@
+// Load environment variables first
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -7,9 +10,17 @@ const PORT = process.env.PORT || 5000;
 // Database module
 const db = require('./database/db');
 
-// Middleware
-app.use(express.json());
-app.use(express.static(path.join(__dirname)));
+// AI Services
+const aiRoutes = require('./src/api/ai-routes');
+
+// Middleware - increase limit for base64 image uploads
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Serve static files from public folder
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/css', express.static(path.join(__dirname, 'public', 'css')));
+app.use('/js', express.static(path.join(__dirname, 'public', 'js')));
 
 // Initialize database on startup
 let dbReady = false;
@@ -33,6 +44,9 @@ app.use((req, res, next) => {
     }
     next();
 });
+
+// AI API Routes
+app.use('/api/ai', aiRoutes);
 
 // Storage file for saved structures (kept for backward compatibility)
 const DATA_FILE = path.join(__dirname, 'savedData.json');
@@ -247,17 +261,22 @@ app.get('/api/user/:email/structures', async (req, res) => {
 });
 
 // ==================== SETUP REACTIONS API ====================
-const setupReactionsRoutes = require('./reactions-api');
+const setupReactionsRoutes = require('./src/api/reactions-api');
 setupReactionsRoutes(app);
 
 // Root route handler - serve index.html
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Login page
+app.get('/login.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // Catch-all for 404s - serve index.html for client-side routing
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // Start server - only after app is fully configured

@@ -342,7 +342,7 @@
             return users.find(u => u.email === email);
         }
 
-        function login() {
+        async function login() {
             clearErrors();
             const email = document.getElementById('email').value.trim();
             const password = document.getElementById('password').value;
@@ -357,6 +357,35 @@
                 return;
             }
 
+            // Try server login first
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.user) {
+                        localStorage.setItem('chemhelp_currentUser', JSON.stringify(data.user));
+                        document.getElementById('successMsg').textContent = 'Login successful! Redirecting...';
+                        document.getElementById('successMsg').style.display = 'block';
+                        setTimeout(() => window.location.href = 'index.html', 1500);
+                        return;
+                    }
+                }
+                
+                // If server returns 401, show error
+                if (response.status === 401) {
+                    showError('generalError', 'Invalid email or password');
+                    return;
+                }
+            } catch (err) {
+                console.warn('Server login failed, trying local storage:', err);
+            }
+
+            // Fallback to localStorage for demo/offline mode
             const user = getUserFromLocalStorage(email);
             if (!user || user.password !== password) {
                 showError('generalError', 'Invalid email or password');

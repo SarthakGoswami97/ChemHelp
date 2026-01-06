@@ -5,8 +5,90 @@ function openProfileModal() {
     const modal = document.getElementById('profileModal');
     if (modal) {
         modal.style.display = 'flex';
-        updateProfileDisplay();
-        fetchUserProfile();
+        
+        // Load user from localStorage and update display
+        const userStr = localStorage.getItem('chemhelp_currentUser');
+        if (userStr) {
+            try {
+                const user = JSON.parse(userStr);
+                
+                // Update profile modal elements
+                const profileNameInput = document.getElementById('profileNameInput');
+                const profileEmail = document.getElementById('profileEmail');
+                const loggedInAs = document.getElementById('loggedInAs');
+                const profileStructures = document.getElementById('profileStructures');
+                const profilePhoto = document.getElementById('profilePhoto');
+                const photoStatus = document.getElementById('photoStatus');
+                
+                if (profileNameInput) profileNameInput.value = user.fullName || '';
+                if (profileEmail) profileEmail.textContent = user.email || 'N/A';
+                if (loggedInAs) loggedInAs.textContent = user.email || 'Not logged in';
+                if (profileStructures) profileStructures.textContent = (user.structures && user.structures.length) || 0;
+                if (photoStatus) photoStatus.textContent = '';
+                
+                // Update profile photo
+                if (profilePhoto && user.photo) {
+                    profilePhoto.textContent = '';
+                    profilePhoto.style.fontSize = '0';
+                    profilePhoto.style.backgroundImage = `url('${user.photo}')`;
+                    profilePhoto.style.backgroundSize = 'cover';
+                    profilePhoto.style.backgroundPosition = 'center';
+                } else if (profilePhoto) {
+                    profilePhoto.style.backgroundImage = 'none';
+                    profilePhoto.style.fontSize = '64px';
+                    profilePhoto.textContent = '👤';
+                }
+                
+                console.log('Profile loaded:', user.email, user.fullName);
+                
+                // Fetch latest from server to get updated photo
+                fetchProfileFromServer(user.email);
+                
+            } catch (err) {
+                console.error('Error loading profile:', err);
+            }
+        } else {
+            console.warn('No user logged in');
+        }
+    }
+}
+
+// Fetch profile from server (including photo)
+async function fetchProfileFromServer(email) {
+    try {
+        const response = await fetch(`/api/user/${encodeURIComponent(email)}`);
+        if (response.ok) {
+            const serverUser = await response.json();
+            
+            // Update localStorage with server data
+            let localUser = JSON.parse(localStorage.getItem('chemhelp_currentUser') || '{}');
+            localUser = { ...localUser, ...serverUser };
+            localStorage.setItem('chemhelp_currentUser', JSON.stringify(localUser));
+            
+            // Update photo display if server has photo
+            if (serverUser.photo) {
+                const profilePhoto = document.getElementById('profilePhoto');
+                if (profilePhoto) {
+                    profilePhoto.textContent = '';
+                    profilePhoto.style.fontSize = '0';
+                    profilePhoto.style.backgroundImage = `url('${serverUser.photo}')`;
+                    profilePhoto.style.backgroundSize = 'cover';
+                    profilePhoto.style.backgroundPosition = 'center';
+                }
+            }
+            
+            // Update structures count
+            if (serverUser.structures) {
+                const profileStructures = document.getElementById('profileStructures');
+                if (profileStructures) {
+                    profileStructures.textContent = serverUser.structures.length;
+                }
+            }
+            
+            console.log('Profile synced from server');
+        }
+    } catch (err) {
+        console.warn('Could not fetch profile from server:', err);
     }
 }
 
@@ -21,33 +103,104 @@ function handlePhotoUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
     
+    // Check file size (max 2MB for base64 storage)
+    if (file.size > 2 * 1024 * 1024) {
+        alert('Photo must be less than 2MB');
+        return;
+    }
+    
     const reader = new FileReader();
     reader.onload = function(e) {
         const dataUrl = e.target.result;
         
-        // Update profile photo display
+        // Update profile photo display immediately
         const photoEl = document.getElementById('profilePhoto');
         if (photoEl) {
+            photoEl.textContent = '';
             photoEl.style.fontSize = '0';
             photoEl.style.backgroundImage = `url('${dataUrl}')`;
             photoEl.style.backgroundSize = 'cover';
             photoEl.style.backgroundPosition = 'center';
         }
         
-        // Save to current user
+        // Store temporarily until save
+        const photoStatus = document.getElementById('photoStatus');
+        if (photoStatus) {
+            photoStatus.textContent = '📷 Photo selected. Click "Save Profile" to save.';
+            photoStatus.style.color = '#0066cc';
+        }
+        
+        // Store the photo data URL in a temporary variable
+        window._pendingPhoto = dataUrl;
+        
+        // Also update local state
         let currentUser = JSON.parse(localStorage.getItem('chemhelp_currentUser') || '{}');
         currentUser.photo = dataUrl;
         localStorage.setItem('chemhelp_currentUser', JSON.stringify(currentUser));
-        
-        // Update in users list
-        const users = JSON.parse(localStorage.getItem('chemhelp_users') || '[]');
-        const userIndex = users.findIndex(u => u.email === currentUser.email);
-        if (userIndex >= 0) {
-            users[userIndex].photo = dataUrl;
-            localStorage.setItem('chemhelp_users', JSON.stringify(users));
-        }
     };
     reader.readAsDataURL(file);
+}
+
+// Save profile to database
+async function saveProfile() {
+    const userStr = localStorage.getItem('chemhelp_currentUser');
+    if (!userStr) {
+        alert('No user logged in');
+        return;
+    }
+    
+    const user = JSON.parse(userStr);
+    const nameInput = document.getElementById('profileNameInput');
+    const newName = nameInput ? nameInput.value.trim() : user.fullName;
+    const photo = window._pendingPhoto || user.photo || null;
+    
+    try {
+        const response = await fetch(`/api/user/${encodeURIComponent(user.email)}/profile-update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                fullName: newName,
+                photo: photo
+            })
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            
+            // Update localStorage with new data
+            const updatedUser = { ...user, fullName: newName, photo: photo };
+            localStorage.setItem('chemhelp_currentUser', JSON.stringify(updatedUser));
+            
+            // Clear pending photo
+            window._pendingPhoto = null;
+            
+            // Update photo status
+            const photoStatus = document.getElementById('photoStatus');
+            if (photoStatus) {
+                photoStatus.textContent = '✅ Profile saved successfully!';
+                photoStatus.style.color = '#22c55e';
+            }
+            
+            // Update toolbar name
+            const userNameDisplay = document.getElementById('userNameDisplay');
+            if (userNameDisplay) {
+                userNameDisplay.textContent = newName || user.email;
+            }
+            
+            // Show notification
+            if (typeof showNotification === 'function') {
+                showNotification('Profile saved successfully!', 'success');
+            } else {
+                alert('Profile saved successfully!');
+            }
+        } else {
+            const error = await response.json();
+            alert('Failed to save profile: ' + (error.error || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error('Error saving profile:', err);
+        alert('Failed to save profile. Please try again.');
+    }
 }
 
 function doLogout() {
@@ -87,8 +240,10 @@ function initDarkMode() {
 }
 
 function toggleDarkMode() {
+    console.log('toggleDarkMode called!');
     const isDark = document.body.classList.toggle('dark-mode');
-    localStorage.setItem('chemhelp_darkMode', isDark);
+    console.log('Dark mode is now:', isDark);
+    localStorage.setItem('chemhelp_darkMode', isDark ? 'true' : 'false');
     updateDarkModeButton();
     showNotification(isDark ? 'Dark mode enabled' : 'Dark mode disabled', 'info', 2000);
 }
@@ -103,7 +258,13 @@ function updateDarkModeButton() {
 
 const canvas = document.getElementById('drawingCanvas');
 const area = document.getElementById('drawingArea');
-const ctx = canvas.getContext('2d');
+if (!canvas) {
+    console.error('❌ FATAL: drawingCanvas element not found!');
+}
+const ctx = canvas ? canvas.getContext('2d') : null;
+if (!ctx) {
+    console.error('❌ FATAL: Could not get 2D context from canvas!');
+}
 
 // --- Cache DOM elements used frequently ---
 const nodeCountEl = document.getElementById('nodeCount');
@@ -378,10 +539,44 @@ function getComponents(){
 
 function formulaForComponent(comp){
     const counts = {};
-    for(const n of comp){ counts[n.label] = (counts[n.label]||0) + 1; }
+    
+    // Handle compound labels like "OH", "NH2", "COOH", etc.
+    for(const n of comp) {
+        const label = n.label;
+        // Expand common group labels
+        if(label === 'OH') {
+            counts['O'] = (counts['O']||0) + 1;
+            counts['H'] = (counts['H']||0) + 1;
+        } else if(label === 'NH2' || label === 'NH₂') {
+            counts['N'] = (counts['N']||0) + 1;
+            counts['H'] = (counts['H']||0) + 2;
+        } else if(label === 'COOH') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['O'] = (counts['O']||0) + 2;
+            counts['H'] = (counts['H']||0) + 1;
+        } else if(label === 'CHO') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['H'] = (counts['H']||0) + 1;
+            counts['O'] = (counts['O']||0) + 1;
+        } else if(label === 'CH3' || label === 'CH₃') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['H'] = (counts['H']||0) + 3;
+        } else if(label === 'CH2' || label === 'CH₂') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['H'] = (counts['H']||0) + 2;
+        } else if(label === 'NO2' || label === 'NO₂') {
+            counts['N'] = (counts['N']||0) + 1;
+            counts['O'] = (counts['O']||0) + 2;
+        } else if(label === 'SO3' || label === 'SO₃') {
+            counts['S'] = (counts['S']||0) + 1;
+            counts['O'] = (counts['O']||0) + 3;
+        } else {
+            counts[label] = (counts[label]||0) + 1;
+        }
+    }
     
     // Special cases for common compounds (use standard order, not Hill order)
-    if(counts['H']===2 && counts['O']===1 && !counts['C']) return 'H₂O'; // water
+    if(counts['H']===2 && counts['O']===1 && !counts['C'] && !counts['Cl']) return 'H₂O'; // water
     if(counts['N']===1 && counts['H']===3 && !counts['C']) return 'NH₃'; // ammonia
     if(counts['C']===1 && counts['O']===2 && !counts['H']) return 'CO₂'; // carbon dioxide
     if(counts['H']===1 && counts['Cl']===1 && !counts['C'] && !counts['O']) return 'HCl'; // HCl
@@ -390,20 +585,55 @@ function formulaForComponent(comp){
     if(counts['H']===1 && counts['F']===1 && !counts['C'] && !counts['O']) return 'HF'; // HF
     if(counts['Na']===1 && counts['O']===1 && counts['H']===1) return 'NaOH'; // NaOH
     if(counts['K']===1 && counts['O']===1 && counts['H']===1) return 'KOH'; // KOH
-    if(counts['O']===1 && counts['H']===1 && !counts['C']) return 'OH'; // hydroxide ion
+    if(counts['H']===2 && counts['O']===2 && !counts['C']) return 'H₂O₂'; // Hydrogen peroxide
+    if(counts['Cl']===1 && counts['O']===2 && counts['H']===1 && !counts['C']) return 'ClO₂H'; // Chloro hydroperoxide
+    if(counts['Cl']===1 && counts['O']===1 && counts['H']===1 && !counts['C']) return 'HOCl'; // Hypochlorous acid
+    if(counts['C']===1 && counts['Cl']===1 && counts['O']===2 && counts['H']) return 'CH₃ClO₂'; // Chloromethyl hydroperoxide
     
     // Hill order for organic compounds: C, H, then alphabetical
     const parts = [];
-    if(counts['C']) { parts.push('C' + (counts['C']>1?counts['C']:'')); delete counts['C']; }
-    if(counts['H']) { parts.push('H' + (counts['H']>1?counts['H']:'')); delete counts['H']; }
-    const keys = Object.keys(counts).sort();
-    for(const k of keys) parts.push(k + (counts[k]>1?counts[k]:''));
+    const countsCopy = {...counts};
+    if(countsCopy['C']) { 
+        parts.push('C' + (countsCopy['C']>1 ? subscript(countsCopy['C']) : '')); 
+        delete countsCopy['C']; 
+    }
+    if(countsCopy['H']) { 
+        parts.push('H' + (countsCopy['H']>1 ? subscript(countsCopy['H']) : '')); 
+        delete countsCopy['H']; 
+    }
+    const keys = Object.keys(countsCopy).sort();
+    for(const k of keys) parts.push(k + (countsCopy[k]>1 ? subscript(countsCopy[k]) : ''));
     return parts.join('') || '—';
 }
 
+// Helper function to convert numbers to subscript
+function subscript(num) {
+    const subscripts = {'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
+    return String(num).split('').map(d => subscripts[d] || d).join('');
+}
+
 function detectFunctionalGroups(comp){
+    // Expand compound labels for accurate counts
     const counts = {};
-    comp.forEach(n=> counts[n.label] = (counts[n.label]||0)+1);
+    for(const n of comp) {
+        const label = n.label;
+        if(label === 'OH') {
+            counts['O'] = (counts['O']||0) + 1;
+            counts['H'] = (counts['H']||0) + 1;
+        } else if(label === 'NH2' || label === 'NH₂') {
+            counts['N'] = (counts['N']||0) + 1;
+            counts['H'] = (counts['H']||0) + 2;
+        } else if(label === 'CH3' || label === 'CH₃') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['H'] = (counts['H']||0) + 3;
+        } else if(label === 'CH2' || label === 'CH₂') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['H'] = (counts['H']||0) + 2;
+        } else {
+            counts[label] = (counts[label]||0) + 1;
+        }
+    }
+    
     const compIds = new Set(comp.map(n=>n.id));
     const localBonds = bonds.filter(b=> compIds.has(b.aId) && compIds.has(b.bId));
     
@@ -413,12 +643,21 @@ function detectFunctionalGroups(comp){
     // Helper function to get node by id
     const getNode = (id) => nodes.find(n=>n.id===id);
     
-    // Helper to check bond between atoms
+    // Helper to check if label is oxygen-containing
+    const isOxygenLabel = (label) => label === 'O' || label === 'OH' || label === 'O-';
+    
+    // Helper to check bond between atoms (with expanded label support)
     const hasBond = (label1, label2, order=null) => {
         return localBonds.some(b=> {
             const a = getNode(b.aId), c = getNode(b.bId);
             if(!a || !c) return false;
-            const match = (a.label===label1 && c.label===label2) || (a.label===label2 && c.label===label1);
+            
+            // Expand labels for matching
+            const aLabels = a.label === 'OH' ? ['O','H','OH'] : [a.label];
+            const cLabels = c.label === 'OH' ? ['O','H','OH'] : [c.label];
+            
+            const match = (aLabels.includes(label1) && cLabels.includes(label2)) || 
+                          (aLabels.includes(label2) && cLabels.includes(label1));
             return match && (order === null || b.order === order);
         });
     };
@@ -459,8 +698,16 @@ function detectFunctionalGroups(comp){
         return { groups, props };
     }
     
-    // CO2 - carbon dioxide (weakly acidic)
-    if(counts['C']===1 && counts['O']===2 && hasBond('C','O',2)){
+    // CO2 - carbon dioxide (weakly acidic) - ONLY if C=O double bond exists and no H atoms
+    // Must have exactly 1 C atom (not CH2, CH3, etc) and exactly 2 O atoms with double bond
+    const hasDoubleBondCO = localBonds.some(b => {
+        const a = getNode(b.aId), c = getNode(b.bId);
+        if(!a || !c) return false;
+        return b.order === 2 && ((a.label === 'C' && c.label === 'O') || (a.label === 'O' && c.label === 'C'));
+    });
+    const pureC = comp.filter(n => n.label === 'C').length;
+    const pureO = comp.filter(n => n.label === 'O').length;
+    if(pureC === 1 && pureO === 2 && hasDoubleBondCO && !counts['H']){
         groups.push('Carbon Dioxide');
         props.classification = 'Carbon Dioxide (CO₂)';
         props.acidity = 'Weakly Acidic';
@@ -626,17 +873,21 @@ function detectFunctionalGroups(comp){
     const hasC_EQ_O = !hasCarboxyl && !hasAldehyde && !hasKetone && !hasEster && !hasAmide && hasBond('C','O',2);
     if(hasC_EQ_O) { groups.push('Carbonyl (C=O)'); props.polar=true; props.reactive=true; if(!props.classification || props.classification==='Unknown') props.classification='Carbonyl Compound'; }
     
-    // Halogen attached to carbon
-    const hasHalogen = ['F','Cl','Br','I'].some(x=> hasBond('C', x, 1));
-    if(hasHalogen) { groups.push('Halogenated (C-X)'); props.reactive=true; if(!props.classification || props.classification==='Unknown') props.classification='Halogenated Compound'; }
+    // Halogen attached to carbon or oxygen (for halogenated peroxides)
+    const hasHalogen = ['F','Cl','Br','I'].some(x=> hasBond('C', x, 1) || hasBond('O', x, 1));
+    if(hasHalogen) { groups.push('Halogenated (C-X or O-X)'); props.reactive=true; if(!props.classification || props.classification==='Unknown') props.classification='Halogenated Compound'; }
     
     // Aromatic (benzene-like rings or aromatic systems)
     const hasDoubleTripleBonds = localBonds.some(b=> b.order>1);
     const onlyCH = Object.keys(counts).every(k=>k==='C' || k==='H');
     if(hasDoubleTripleBonds && onlyCH && counts['C']>=6) { groups.push('Aromatic Ring'); props.classification='Aromatic Compound'; }
     
-    // Peroxide: O-O bond
-    const hasPeroxide = localBonds.some(b=> getNode(b.aId).label==='O' && getNode(b.bId).label==='O');
+    // Peroxide: O-O bond (including O-OH bonds)
+    const hasPeroxide = localBonds.some(b=> {
+        const a = getNode(b.aId), c = getNode(b.bId);
+        if(!a || !c) return false;
+        return isOxygenLabel(a.label) && isOxygenLabel(c.label);
+    });
     if(hasPeroxide) { groups.push('Peroxide (−O−O−)'); props.reactive=true; if(!props.classification || props.classification==='Unknown') props.classification='Peroxide'; }
     
     // Classify if not already classified
@@ -661,7 +912,40 @@ function detectFunctionalGroups(comp){
 
 function guessName(comp){
     const labels = comp.map(n=>n.label);
-    const counts = {}; labels.forEach(l=>counts[l]=(counts[l]||0)+1);
+    
+    // Expand compound labels to get accurate element counts
+    const counts = {};
+    for(const label of labels) {
+        if(label === 'OH') {
+            counts['O'] = (counts['O']||0) + 1;
+            counts['H'] = (counts['H']||0) + 1;
+        } else if(label === 'NH2' || label === 'NH₂') {
+            counts['N'] = (counts['N']||0) + 1;
+            counts['H'] = (counts['H']||0) + 2;
+        } else if(label === 'COOH') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['O'] = (counts['O']||0) + 2;
+            counts['H'] = (counts['H']||0) + 1;
+        } else if(label === 'CHO') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['H'] = (counts['H']||0) + 1;
+            counts['O'] = (counts['O']||0) + 1;
+        } else if(label === 'CH3' || label === 'CH₃') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['H'] = (counts['H']||0) + 3;
+        } else if(label === 'CH2' || label === 'CH₂') {
+            counts['C'] = (counts['C']||0) + 1;
+            counts['H'] = (counts['H']||0) + 2;
+        } else if(label === 'NiH') {
+            counts['Ni'] = (counts['Ni']||0) + 1;
+            counts['H'] = (counts['H']||0) + 1;
+        } else if(label === 'NiH2') {
+            counts['Ni'] = (counts['Ni']||0) + 1;
+            counts['H'] = (counts['H']||0) + 2;
+        } else {
+            counts[label] = (counts[label]||0) + 1;
+        }
+    }
     const cCount = counts['C']||0;
     
     // === INORGANIC COMPOUNDS ===
@@ -676,10 +960,13 @@ function guessName(comp){
     if(counts['H']===2 && counts['O']===1) return 'Water (H₂O)';
     
     // Ammonia
-    if(counts['N']===1 && counts['H']===3) return 'Ammonia (NH₃)';
+    if(counts['N']===1 && counts['H']===3 && Object.keys(counts).length === 2) return 'Ammonia (NH₃)';
     
-    // Carbon dioxide
-    if(counts['C']===1 && counts['O']===2) return 'Carbon Dioxide (CO₂)';
+    // Carbon dioxide - STRICT: must be exactly C=1, O=2, and NO other elements
+    const elementCount = Object.keys(counts).length;
+    if(counts['C']===1 && counts['O']===2 && elementCount === 2 && !counts['H'] && !counts['N']) {
+        return 'Carbon Dioxide (CO₂)';
+    }
     
     // Sodium hydroxide
     if(counts['Na']===1 && counts['O']===1 && counts['H']===1) return 'Sodium Hydroxide (NaOH)';
@@ -696,10 +983,73 @@ function guessName(comp){
     // Barium hydroxide
     if(counts['Ba']===1 && counts['O']===2 && counts['H']===2) return 'Barium Hydroxide (Ba(OH)₂)';
     
-    // === ORGANIC COMPOUNDS ===
+    // === PEROXIDES AND SPECIAL OXYGEN COMPOUNDS ===
     
     const compIds = new Set(comp.map(n=>n.id));
     const localBonds = bonds.filter(b=> compIds.has(b.aId) && compIds.has(b.bId));
+    
+    // Helper to check if label contains oxygen (O, OH, etc.)
+    const isOxygenLabel = (label) => label === 'O' || label === 'OH' || label === 'O-' || label === 'O⁻';
+    
+    // Helper to check O-O bond (peroxide) - including O-OH bonds
+    const hasOObond = localBonds.some(b=> {
+        const a = nodes.find(n=>n.id===b.aId), c = nodes.find(n=>n.id===b.bId);
+        if(!a || !c) return false;
+        // Check for O-O, O-OH, or OH-OH bonds
+        return (isOxygenLabel(a.label) && isOxygenLabel(c.label));
+    });
+    
+    // Helper to check for specific element bonds (with expanded labels)
+    const hasBondBetween = (el1, el2) => localBonds.some(b=> {
+        const a = nodes.find(n=>n.id===b.aId), c = nodes.find(n=>n.id===b.bId);
+        if(!a || !c) return false;
+        
+        // Handle expanded labels
+        const aLabels = a.label === 'OH' ? ['O','H'] : [a.label];
+        const cLabels = c.label === 'OH' ? ['O','H'] : [c.label];
+        
+        const aMatches1 = aLabels.includes(el1) || a.label === el1;
+        const cMatches2 = cLabels.includes(el2) || c.label === el2;
+        const aMatches2 = aLabels.includes(el2) || a.label === el2;
+        const cMatches1 = cLabels.includes(el1) || c.label === el1;
+        
+        return (aMatches1 && cMatches2) || (aMatches2 && cMatches1);
+    });
+    
+    // Hydrogen peroxide: H-O-O-H
+    if(counts['H']===2 && counts['O']===2 && hasOObond) return 'Hydrogen Peroxide (H₂O₂)';
+    
+    // Chloromethyl hydroperoxide: Cl-CH2-O-O-H (C, Cl, O, O, H)
+    if(counts['C']===1 && counts['Cl']===1 && counts['O']===2 && counts['H']>=1 && hasOObond) {
+        return 'Chloromethyl Hydroperoxide (CH₃ClO₂)';
+    }
+    
+    // Hypochlorous acid: H-O-Cl
+    if(counts['H']===1 && counts['O']===1 && counts['Cl']===1 && hasBondBetween('O','Cl') && hasBondBetween('O','H')) {
+        return 'Hypochlorous Acid (HOCl)';
+    }
+    
+    // Chlorine peroxide / Chloro hydroperoxide: Cl-O-O-H
+    if(counts['Cl']===1 && counts['O']===2 && counts['H']===1 && hasOObond && hasBondBetween('O','Cl')) {
+        return 'Chloro Hydroperoxide (ClOOH)';
+    }
+    
+    // General organic hydroperoxides: R-O-O-H (with carbon)
+    if(cCount > 0 && counts['O']===2 && counts['H']>=1 && hasOObond) {
+        const base = (['Methyl','Ethyl','Propyl','Butyl','Pentyl','Hexyl','Heptyl','Octyl','Nonyl','Decyl'][cCount-1] || (cCount+'C-'));
+        return base + ' Hydroperoxide';
+    }
+    
+    // General peroxides: R-O-O-R'
+    if(hasOObond) {
+        if(counts['Cl'] && !counts['C']) return 'Chlorine Peroxide';
+        if(counts['Br']) return 'Bromo Peroxide';
+        if(counts['I']) return 'Iodo Peroxide';
+        return 'Peroxide Compound';
+    }
+    
+    // === ORGANIC COMPOUNDS ===
+    
     const onlyCH = Object.keys(counts).every(k=>k==='C' || k==='H');
     const allSingle = localBonds.every(b=>b.order === 1);
     
@@ -828,13 +1178,28 @@ document.addEventListener('click', (e)=> {
 });
 
 /* File menu actions */
-document.getElementById('mNew').addEventListener('click', ()=> menuNew());
-document.getElementById('mOpen').addEventListener('click', ()=> document.getElementById('fileInput').click());
-document.getElementById('mSave').addEventListener('click', ()=> {
+['mNew', 'mOpen', 'mSave', 'mExport', 'mUndo', 'mRedo', 'mClear', 'mToggleGrid', 'mToggleLabels', 'mCenter', 'mPeriodic', 'mInsertElement', 'mInsertPTImage', 'fileInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) console.warn(`Element ${id} not found`);
+});
+
+const mNew = document.getElementById('mNew');
+if (mNew) mNew.addEventListener('click', ()=> menuNew());
+
+const mOpen = document.getElementById('mOpen');
+if (mOpen) mOpen.addEventListener('click', ()=> {
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) fileInput.click();
+});
+
+const mSave = document.getElementById('mSave');
+if (mSave) mSave.addEventListener('click', ()=> {
     saveJSON();
     showNotification('Structure saved successfully!', 'success', 2000);
 });
-document.getElementById('mExport').addEventListener('click', ()=> exportPNG());
+
+const mExport = document.getElementById('mExport');
+if (mExport) mExport.addEventListener('click', ()=> exportPNG());
 
 function menuNew(){
     if(!confirm('Clear the canvas?')) return;
@@ -844,40 +1209,55 @@ function menuNew(){
 }
 
 /* Edit menu actions */
-document.getElementById('mUndo').addEventListener('click', ()=> undo());
-document.getElementById('mRedo').addEventListener('click', ()=> redo());
-document.getElementById('mClear').addEventListener('click', ()=> {
+const mUndo = document.getElementById('mUndo');
+if (mUndo) mUndo.addEventListener('click', ()=> undo());
+
+const mRedo = document.getElementById('mRedo');
+if (mRedo) mRedo.addEventListener('click', ()=> redo());
+
+const mClear = document.getElementById('mClear');
+if (mClear) mClear.addEventListener('click', ()=> {
     if(!confirm('Clear everything?')) return;
     nodes = []; bonds = []; nextId = 1; pushHistory(); updateCounts(); draw();
 });
 
 /* View menu actions */
-document.getElementById('mToggleGrid').addEventListener('click', ()=>{
+const mToggleGrid = document.getElementById('mToggleGrid');
+if (mToggleGrid) mToggleGrid.addEventListener('click', ()=>{
     showGrid = !showGrid; draw();
 });
-document.getElementById('mToggleLabels').addEventListener('click', ()=>{
+
+const mToggleLabels = document.getElementById('mToggleLabels');
+if (mToggleLabels) mToggleLabels.addEventListener('click', ()=>{
     showLabels = !showLabels; draw();
 });
-document.getElementById('mCenter').addEventListener('click', ()=> { /* simple center: no-op placeholder */ alert('Centering view — canvas auto-fits.'); });
+
+const mCenter = document.getElementById('mCenter');
+if (mCenter) mCenter.addEventListener('click', ()=> { alert('Centering view — canvas auto-fits.'); });
 
 /* Object menu actions */
-document.getElementById('mPeriodic').addEventListener('click', ()=> window.open('https://ptable.com/','_blank'));
-document.getElementById('mInsertElement').addEventListener('click', ()=>{
+const mPeriodic = document.getElementById('mPeriodic');
+if (mPeriodic) mPeriodic.addEventListener('click', ()=> window.open('https://ptable.com/','_blank'));
+
+const mInsertElement = document.getElementById('mInsertElement');
+if (mInsertElement) mInsertElement.addEventListener('click', ()=>{
     const sym = prompt('Enter element symbol (e.g., Fe, O, N):','C');
     if(!sym) return;
     const nx = canvas.width/2, ny = canvas.height/2;
     addNode(nx, ny, sym.toUpperCase());
     pushHistory();
 });
-document.getElementById('mInsertPTImage').addEventListener('click', ()=>{
-    // insert a small periodic table image in bottom-right as an object (drawn as image)
+
+const mInsertPTImage = document.getElementById('mInsertPTImage');
+if (mInsertPTImage) mInsertPTImage.addEventListener('click', ()=>{
     const imgURL = 'https://upload.wikimedia.org/wikipedia/commons/4/45/Periodic_table_large.svg';
     insertImageObject(imgURL);
     pushHistory();
 });
 
 /* file open input */
-document.getElementById('fileInput').addEventListener('change', handleOpenFile);
+const fileInputElement = document.getElementById('fileInput');
+if (fileInputElement) fileInputElement.addEventListener('change', handleOpenFile);
 
 /* canvas helpers */
 function getMousePos(evt){
@@ -1770,46 +2150,149 @@ async function showAiNameTab() {
             setTimeout(() => { btn.style.transform = ''; }, 180);
         }
         
-        tab.textContent = 'Analyzing molecule...';
+        tab.innerHTML = '<span style="color:#5b6ee1;"><b>🔬 Analyzing with Gemini AI...</b></span>';
         tab.style.display = 'block';
         
         if (!nodes || nodes.length === 0) {
-            tab.textContent = 'No molecules drawn. Draw something first!';
+            tab.innerHTML = '<span style="color:#d4534a;">❌ No molecules drawn. Draw something first!</span>';
             resize();
             return;
         }
         
         const comps = getComponents();
         if (!comps || comps.length === 0) {
-            tab.textContent = 'No valid molecules detected.';
+            tab.innerHTML = '<span style="color:#d4534a;">❌ No valid molecules detected.</span>';
             resize();
             return;
         }
         
         let result = '';
+        
+        // Try Gemini API first for accurate naming
         for (let i = 0; i < comps.length; i++) {
             const comp = comps[i];
-            const name = guessName(comp);
-            const formula = formulaForComponent(comp);
-            const { groups, props } = detectFunctionalGroups(comp);
             
-            // Build nature info
-            let nature = `<span style='color:#3a3d5c; font-weight:500;'>${props.classification}</span>`;
-            if(props.polar) nature += ` • <span style='color:#ff1744;'>Polar</span>`;
-            if(props.reactive) nature += ` • <span style='color:#ff1744;'><b>Reactive</b></span>`;
-            
-            // Acidity color coding
-            let acidityColor = '#7f8c8d';
-            if(props.acidity.includes('Acidic')) acidityColor = '#d4534a';
-            else if(props.acidity.includes('Basic')) acidityColor = '#4a8cd4';
-            else if(props.acidity.includes('Amphoteric')) acidityColor = '#9d4ad4';
-            
-            const acidityDisplay = `<div style='margin-top:6px;font-size:0.96rem;'><b style='color:${acidityColor};'>${props.acidity}</b> — pH ≈ ${props.pH}</div>`;
-            
-            let functionalHTML = '';
-            if(groups.length) functionalHTML = `<div style='font-size:0.95rem;color:#7f8c8d;margin-top:4px;'>Functional Groups: ${groups.join(', ')}</div>`;
-            
-            result += `<div style="margin-bottom:12px;padding:10px;background:#fff;border-radius:8px;border-left:4px solid #5b6ee1;"><b>${name}</b> — <span style='color:#7f8c8d;'>${formula}</span><br/>${nature}${acidityDisplay}${functionalHTML}</div>`;
+            try {
+                // Call backend AI naming API
+                // Convert bond format from (aId, bId) to (source, target)
+                const compIds = new Set(comp.map(n => n.id));
+                const convertedBonds = bonds
+                    .filter(b => compIds.has(b.aId) && compIds.has(b.bId))
+                    .map(b => ({
+                        source: b.aId,
+                        target: b.bId,
+                        type: b.type || 'single'
+                    }));
+                
+                // DEBUG: Log what we're sending
+                console.log('🔍 SENDING TO API:');
+                console.log('   Atoms:', comp.map(n => `${n.label}(${n.id})`).join(', '));
+                console.log('   Bonds:', convertedBonds);
+                console.log('   Full JSON:', JSON.stringify({ nodes: comp, bonds: convertedBonds }));
+                
+                const response = await fetch('/api/ai/name-structure', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nodes: comp, bonds: convertedBonds })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Display Gemini AI result
+                    const { iupacName, commonNames, formula, functionalGroups, classification, properties, description } = data;
+                    
+                    let commonNamesHTML = '';
+                    if (commonNames && commonNames.length > 0) {
+                        commonNamesHTML = `<div style='font-size:0.9rem;color:#7f8c8d;margin-top:4px;'>Also known as: <i>${commonNames.join(', ')}</i></div>`;
+                    }
+                    
+                    // Acidity color coding
+                    let acidityColor = '#7f8c8d';
+                    if(properties.acidity.includes('Acidic')) acidityColor = '#d4534a';
+                    else if(properties.acidity.includes('Basic')) acidityColor = '#4a8cd4';
+                    else if(properties.acidity.includes('Amphoteric')) acidityColor = '#9d4ad4';
+                    
+                    const propsHTML = `
+                        <div style='font-size:0.9rem;margin-top:8px;'>
+                            <span style='color:#3a3d5c;'>${classification}</span>
+                            ${properties.polarity ? ` • <span style='color:#ff1744;'>${properties.polarity}</span>` : ''}
+                            ${properties.reactivity === 'High' ? ` • <span style='color:#ff1744;'><b>${properties.reactivity} Reactivity</b></span>` : ` • <span>${properties.reactivity}</span>`}
+                        </div>
+                        <div style='margin-top:6px;font-size:0.9rem;'>
+                            <b style='color:${acidityColor};'>${properties.acidity}</b> — pH ≈ ${properties.pH}
+                        </div>
+                    `;
+                    
+                    let functionalHTML = '';
+                    if(functionalGroups && functionalGroups.length > 0) {
+                        functionalHTML = `<div style='font-size:0.9rem;color:#7f8c8d;margin-top:4px;'>Functional Groups: ${functionalGroups.join(', ')}</div>`;
+                    }
+                    
+                    let descriptionHTML = '';
+                    if(description) {
+                        descriptionHTML = `<div style='font-size:0.85rem;color:#7f8c8d;margin-top:6px;font-style:italic;'>"${description}"</div>`;
+                    }
+                    
+                    result += `<div style="margin-bottom:12px;padding:12px;background:#fff;border-radius:8px;border-left:4px solid #5b6ee1;">
+                        <b style="font-size:1.05em;color:#2c3e50;">${iupacName}</b>
+                        <div style="color:#7f8c8d;font-size:0.95rem;margin-top:4px;"><strong>Formula:</strong> ${formula}</div>
+                        ${commonNamesHTML}
+                        ${propsHTML}
+                        ${functionalHTML}
+                        ${descriptionHTML}
+                        <div style="font-size:0.8rem;color:#27ae60;margin-top:8px;font-weight:500;">✅ Powered by Local Chemistry Engine v2.0</div>
+                    </div>`;
+                } else {
+                    // Fallback to local naming
+                    console.warn('API returned error, using fallback naming');
+                    const name = guessName(comp);
+                    const formula = formulaForComponent(comp);
+                    const { groups, props } = detectFunctionalGroups(comp);
+                    
+                    let nature = `<span style='color:#3a3d5c; font-weight:500;'>${props.classification}</span>`;
+                    if(props.polar) nature += ` • <span style='color:#ff1744;'>Polar</span>`;
+                    if(props.reactive) nature += ` • <span style='color:#ff1744;'><b>Reactive</b></span>`;
+                    
+                    let acidityColor = '#7f8c8d';
+                    if(props.acidity.includes('Acidic')) acidityColor = '#d4534a';
+                    else if(props.acidity.includes('Basic')) acidityColor = '#4a8cd4';
+                    else if(props.acidity.includes('Amphoteric')) acidityColor = '#9d4ad4';
+                    
+                    const acidityDisplay = `<div style='margin-top:6px;font-size:0.96rem;'><b style='color:${acidityColor};'>${props.acidity}</b> — pH ≈ ${props.pH}</div>`;
+                    
+                    let functionalHTML = '';
+                    if(groups.length) functionalHTML = `<div style='font-size:0.95rem;color:#7f8c8d;margin-top:4px;'>Functional Groups: ${groups.join(', ')}</div>`;
+                    
+                    result += `<div style="margin-bottom:12px;padding:10px;background:#fff;border-radius:8px;border-left:4px solid #ccc;"><b>${name}</b> — <span style='color:#7f8c8d;'>${formula}</span><br/>${nature}${acidityDisplay}${functionalHTML}<div style="font-size:0.8rem;color:#999;margin-top:6px;">⚠️ Local naming (Gemini API unavailable)</div></div>`;
+                }
+            } catch (error) {
+                console.error('Error calling naming API:', error);
+                // Fallback to local naming
+                const name = guessName(comp);
+                const formula = formulaForComponent(comp);
+                const { groups, props } = detectFunctionalGroups(comp);
+                
+                let nature = `<span style='color:#3a3d5c; font-weight:500;'>${props.classification}</span>`;
+                if(props.polar) nature += ` • <span style='color:#ff1744;'>Polar</span>`;
+                if(props.reactive) nature += ` • <span style='color:#ff1744;'><b>Reactive</b></span>`;
+                
+                let acidityColor = '#7f8c8d';
+                if(props.acidity.includes('Acidic')) acidityColor = '#d4534a';
+                else if(props.acidity.includes('Basic')) acidityColor = '#4a8cd4';
+                else if(props.acidity.includes('Amphoteric')) acidityColor = '#9d4ad4';
+                
+                const acidityDisplay = `<div style='margin-top:6px;font-size:0.96rem;'><b style='color:${acidityColor};'>${props.acidity}</b> — pH ≈ ${props.pH}</div>`;
+                
+                let functionalHTML = '';
+                if(groups.length) functionalHTML = `<div style='font-size:0.95rem;color:#7f8c8d;margin-top:4px;'>Functional Groups: ${groups.join(', ')}</div>`;
+                
+                result += `<div style="margin-bottom:12px;padding:10px;background:#fff;border-radius:8px;border-left:4px solid #ccc;"><b>${name}</b> — <span style='color:#7f8c8d;'>${formula}</span><br/>${nature}${acidityDisplay}${functionalHTML}<div style="font-size:0.8rem;color:#999;margin-top:6px;">📋 Local naming (AI temporarily unavailable)</div></div>`;
+            }
         }
         
         if (comps.length > 1) {
@@ -1884,7 +2367,7 @@ Atoms: ${atoms}
 Bonds: ${bondStr}
 Return only the name, nothing else.`;
 
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + encodeURIComponent(GEMINI_API_KEY);
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + encodeURIComponent(GEMINI_API_KEY);
     const body = { contents: [{ parts: [{ text: prompt }] }] };
 
     const resp = await fetch(url, {
@@ -1949,7 +2432,7 @@ Atoms: ${atoms}
 Bonds: ${bondStr}
 Return only the main reaction or product, nothing else.`;
 
-    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + encodeURIComponent(GEMINI_API_KEY);
+    const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + encodeURIComponent(GEMINI_API_KEY);
     const body = { contents: [{ parts: [{ text: prompt }] }] };
 
     const resp = await fetch(url, {
@@ -2039,20 +2522,22 @@ const namedReactions = {
     hellvolhard: { /* ... */ }
 };
 
-document.getElementById('namedReactionSelect').addEventListener('change', function() {
-    const val = this.value;
-    if (!val || !namedReactions[val]) {
-        namedReactionInfo.style.display = 'none';
-        return;
-    }
-    namedReactions[val].insert();
-    pushHistory();
-    updateCounts();
-    requestDraw();
-    namedReactionInfo.innerHTML = `<b>${namedReactions[val].name}</b><br>${namedReactions[val].info}`;
-    namedReactionInfo.style.display = 'inline-block';
-    setTimeout(() => { this.value = ""; }, 500);
-});
+if (namedReactionSelect) {
+    namedReactionSelect.addEventListener('change', function() {
+        const val = this.value;
+        if (!val || !namedReactions[val]) {
+            namedReactionInfo.style.display = 'none';
+            return;
+        }
+        namedReactions[val].insert();
+        pushHistory();
+        updateCounts();
+        requestDraw();
+        namedReactionInfo.innerHTML = `<b>${namedReactions[val].name}</b><br>${namedReactions[val].info}`;
+        namedReactionInfo.style.display = 'inline-block';
+        setTimeout(() => { this.value = ""; }, 500);
+    });
+}
 
 // ==================== CHEMISTRY REACTIONS FEATURE ====================
 let allReactions = [];
@@ -2359,7 +2844,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Dark mode toggle
     const darkModeBtn = document.getElementById('darkModeToggle');
     if (darkModeBtn) {
-        darkModeBtn.addEventListener('click', toggleDarkMode);
+        // Remove any existing listeners
+        darkModeBtn.onclick = null;
+        // Add fresh event listener
+        darkModeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Dark mode button clicked via listener');
+            toggleDarkMode();
+        });
+        // Also set inline onclick as backup
+        darkModeBtn.setAttribute('onclick', 'toggleDarkMode(); return false;');
+        console.log('✅ Dark mode button listeners set up');
+    } else {
+        console.warn('⚠️ Dark mode button not found in DOM');
     }
     
     const userProfileBtn = document.getElementById('userProfileBtn');
@@ -2427,5 +2925,6 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Setting up reactions...');
     setupReactionsListeners();
     loadReactions();
+    
     console.log('=== DOMContentLoaded completed ===');
 });

@@ -1,1 +1,49 @@
-{"nodes":[],"bonds":[]}
+{
+  "nodes": [
+    {
+      "id": 1,
+      "x": 150,
+      "y": 186,
+      "label": "C"
+    },
+    {
+      "id": 2,
+      "x": 215,
+      "y": 188,
+      "label": "O"
+    },
+    {
+      "id": 3,
+      "x": 270,
+      "y": 179,
+      "label": "O"
+    },
+    {
+      "id": 4,
+      "x": 364,
+      "y": 174,
+      "label": "H"
+    }
+  ],
+  "bonds": [
+    {
+      "aId": 1,
+      "bId": 2,
+      "order": 1,
+      "type": "single"
+    },
+    {
+      "aId": 2,
+      "bId": 3,
+      "order": 1,
+      "type": "single"
+    },
+    {
+      "aId": 3,
+      "bId": 4,
+      "order": 1,
+      "type": "single"
+    }
+  ],
+  "savedAt": "2026-01-01T18:15:57.108Z"
+}
