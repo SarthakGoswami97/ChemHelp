@@ -8,6 +8,8 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     photo TEXT,
+    lastLogin DATETIME,
+    loginCount INTEGER DEFAULT 0,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -33,7 +35,37 @@ CREATE TABLE IF NOT EXISTS reactions (
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Compound Imports Table (track PubChem imports)
+CREATE TABLE IF NOT EXISTS compound_imports (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    cid INTEGER NOT NULL,
+    compoundName TEXT,
+    molecularFormula TEXT,
+    molecularWeight REAL,
+    ipAddress TEXT,
+    userAgent TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- User Activity Log
+CREATE TABLE IF NOT EXISTS activity_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    userId INTEGER,
+    action TEXT NOT NULL,
+    details TEXT,
+    ipAddress TEXT,
+    userAgent TEXT,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
+);
+
 -- Create indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_structures_userId ON structures(userId);
 CREATE INDEX IF NOT EXISTS idx_reactions_userId ON reactions(userId);
+CREATE INDEX IF NOT EXISTS idx_compound_imports_userId ON compound_imports(userId);
+CREATE INDEX IF NOT EXISTS idx_compound_imports_cid ON compound_imports(cid);
+CREATE INDEX IF NOT EXISTS idx_activity_log_userId ON activity_log(userId);
+CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action);

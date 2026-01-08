@@ -331,6 +331,157 @@ function getDatabaseStats() {
     });
 }
 
+// ==================== TRACKING FUNCTIONS ====================
+
+// Log user activity
+function logActivity(userId, action, details = null, ipAddress = null, userAgent = null) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            INSERT INTO activity_log (userId, action, details, ipAddress, userAgent)
+            VALUES (?, ?, ?, ?, ?)
+        `;
+        
+        db.run(query, [userId, action, details, ipAddress, userAgent], function(err) {
+            if (err) {
+                console.error('Error logging activity:', err);
+                reject(err);
+            } else {
+                resolve({ id: this.lastID });
+            }
+        });
+    });
+}
+
+// Track compound import
+function trackCompoundImport(userId, cid, compoundName, molecularFormula, molecularWeight, ipAddress = null, userAgent = null) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            INSERT INTO compound_imports (userId, cid, compoundName, molecularFormula, molecularWeight, ipAddress, userAgent)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `;
+        
+        db.run(query, [userId, cid, compoundName, molecularFormula, molecularWeight, ipAddress, userAgent], function(err) {
+            if (err) {
+                console.error('Error tracking compound import:', err);
+                reject(err);
+            } else {
+                resolve({ id: this.lastID });
+            }
+        });
+    });
+}
+
+// Update user login info
+function updateUserLogin(userId, ipAddress = null) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            UPDATE users 
+            SET lastLogin = CURRENT_TIMESTAMP, loginCount = loginCount + 1
+            WHERE id = ?
+        `;
+        
+        db.run(query, [userId], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve({ success: true });
+            }
+        });
+    });
+}
+
+// Get all compound imports (admin)
+function getCompoundImports(limit = 100) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT ci.*, u.email, u.fullName
+            FROM compound_imports ci
+            LEFT JOIN users u ON ci.userId = u.id
+            ORDER BY ci.createdAt DESC
+            LIMIT ?
+        `;
+        
+        db.all(query, [limit], (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}
+
+// Get activity log (admin)
+function getActivityLog(limit = 100, action = null) {
+    return new Promise((resolve, reject) => {
+        let query = `
+            SELECT al.*, u.email, u.fullName
+            FROM activity_log al
+            LEFT JOIN users u ON al.userId = u.id
+        `;
+        
+        const params = [];
+        
+        if (action) {
+            query += ' WHERE al.action = ?';
+            params.push(action);
+        }
+        
+        query += ' ORDER BY al.createdAt DESC LIMIT ?';
+        params.push(limit);
+        
+        db.all(query, params, (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}
+
+// Get user statistics
+function getUserStats(userId) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT 
+                (SELECT COUNT(*) FROM structures WHERE userId = ?) as structureCount,
+                (SELECT COUNT(*) FROM reactions WHERE userId = ?) as reactionCount,
+                (SELECT COUNT(*) FROM compound_imports WHERE userId = ?) as importCount,
+                (SELECT COUNT(*) FROM activity_log WHERE userId = ?) as activityCount
+        `;
+        
+        db.get(query, [userId, userId, userId, userId], (err, row) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(row);
+            }
+        });
+    });
+}
+
+// Get popular compounds (most imported)
+function getPopularCompounds(limit = 20) {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT cid, compoundName, molecularFormula, COUNT(*) as importCount
+            FROM compound_imports
+            GROUP BY cid
+            ORDER BY importCount DESC
+            LIMIT ?
+        `;
+        
+        db.all(query, [limit], (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+}
+
 // Export all functions
 module.exports = {
     initDatabase,
@@ -346,5 +497,13 @@ module.exports = {
     saveReaction,
     getUserReactions,
     getAllUsers,
-    getDatabaseStats
+    getDatabaseStats,
+    // New tracking functions
+    logActivity,
+    trackCompoundImport,
+    updateUserLogin,
+    getCompoundImports,
+    getActivityLog,
+    getUserStats,
+    getPopularCompounds
 };

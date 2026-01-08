@@ -59,7 +59,7 @@
         <div class="title">⚛️ ChemHelp</div>
         <div style="flex:1"></div>
         <!-- Dark Mode Toggle -->
-        <button id="darkModeToggle" onclick="toggleDarkMode()" class="menu-btn" style="background:rgba(0,102,204,0.15);border:1.5px solid rgba(0,102,204,0.3);" title="Toggle dark mode">🌓</button>
+        <button id="darkModeToggle" class="menu-btn" style="background:rgba(0,102,204,0.15);border:1.5px solid rgba(0,102,204,0.3);" title="Toggle dark mode">🌓</button>
         <!-- Implicit H Toggle -->
         <button id="implicitHToggle" class="menu-btn" style="background:rgba(0,102,204,0.15);border:1.5px solid rgba(0,102,204,0.3);" title="Toggle implicit hydrogens">H: ON</button>
         <!-- User Profile -->
@@ -161,6 +161,60 @@
             </div>
 
             <div class="group">
+                <h3>⚡ Quick Add</h3>
+                
+                <!-- Quick Elements -->
+                <div style="margin-bottom:8px;">
+                    <small style="color:#888;font-weight:600;">Elements</small>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
+                        <button class="btn" id="quickAddC" style="font-size:0.85rem;padding:8px;"><span>C</span></button>
+                        <button class="btn" id="quickAddN" style="font-size:0.85rem;padding:8px;"><span>N</span></button>
+                        <button class="btn" id="quickAddO" style="font-size:0.85rem;padding:8px;"><span>O</span></button>
+                        <button class="btn" id="quickAddS" style="font-size:0.85rem;padding:8px;"><span>S</span></button>
+                        <button class="btn" id="quickAddP" style="font-size:0.85rem;padding:8px;"><span>P</span></button>
+                        <button class="btn" id="quickAddCl" style="font-size:0.85rem;padding:8px;"><span>Cl</span></button>
+                    </div>
+                </div>
+
+                <!-- Quick Functional Groups -->
+                <div style="margin-bottom:8px;">
+                    <small style="color:#888;font-weight:600;">Groups</small>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
+                        <button class="btn" id="quickAddCarbonyl" style="font-size:0.75rem;padding:8px;"><span>C=O</span></button>
+                        <button class="btn" id="quickAddOH" style="font-size:0.75rem;padding:8px;"><span>OH</span></button>
+                        <button class="btn" id="quickAddNH2" style="font-size:0.75rem;padding:8px;"><span>NH2</span></button>
+                        <button class="btn" id="quickAddCOOH" style="font-size:0.75rem;padding:8px;"><span>COOH</span></button>
+                        <button class="btn" id="quickAddCHO" style="font-size:0.75rem;padding:8px;"><span>CHO</span></button>
+                        <button class="btn" id="quickAddCOOR" style="font-size:0.75rem;padding:8px;"><span>COOR</span></button>
+                    </div>
+                </div>
+
+                <!-- Quick Rings -->
+                <div style="margin-bottom:8px;">
+                    <small style="color:#888;font-weight:600;">Rings</small>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:4px;">
+                        <button class="btn" id="quickAddBenzene" style="font-size:0.75rem;padding:8px;"><span>Benzene</span></button>
+                        <button class="btn" id="quickAddCyclo6" style="font-size:0.75rem;padding:8px;"><span>Cyclohexane</span></button>
+                        <button class="btn" id="quickAddCyclo5" style="font-size:0.75rem;padding:8px;"><span>Cyclopentane</span></button>
+                        <button class="btn" id="quickAddPyrrole" style="font-size:0.75rem;padding:8px;"><span>Pyrrole</span></button>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
+                    <button class="btn" id="quickDuplicate" style="font-size:0.8rem;padding:8px;"><span>Duplicate</span></button>
+                    <button class="btn" id="quickClear" style="font-size:0.8rem;padding:8px;"><span>Clear</span></button>
+                </div>
+            </div>
+
+            <div class="group">
+                <h3>🔍 PubChem Import</h3>
+                <input type="text" id="pubchemSearch" placeholder="Search molecule..." style="width:100%;padding:10px;border:1px solid #cfd8e8;border-radius:6px;font-size:0.9rem;margin-bottom:8px;box-sizing:border-box;">
+                <button id="pubchemSearchBtn" class="btn" style="width:100%;padding:10px 16px;white-space:nowrap;"><span>🔍 Search</span></button>
+                <div id="pubchemResults" style="font-size:0.85rem;max-height:200px;overflow-y:auto;margin-top:10px;"></div>
+            </div>
+
+            <div class="group">
                 <h3>Templates</h3>
                 <button class="btn" data-template="benzene"><span>Benzene</span></button>
                 <button class="btn" data-template="cyclohexane"><span>Cyclohexane</span></button>
@@ -234,6 +288,9 @@
 
     <input id="fileInput" type="file" accept=".json" style="display:none">
 
-    <script src="js/app.js"></script>
+    <!-- Quick Add and PubChem Integration -->
+    <script src="js/quickAdd.js?v=3"></script>
+    <script src="js/pubchemIntegration.js?v=3"></script>
+    <script src="js/app.js?v=3"></script>
 </body>
 </html>

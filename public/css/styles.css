@@ -587,6 +587,195 @@ body.dark-mode .menu-btn:hover {
     border-color: rgba(0, 102, 204, 0.4) !important;
 }
 
+body.dark-mode .status-bar {
+    background: linear-gradient(90deg, #0f1729 60%, #151f3d 100%) !important;
+    border-top-color: rgba(255, 255, 255, 0.08) !important;
+    color: #a0aec0 !important;
+}
+
+body.dark-mode .canvas-wrap {
+    background: linear-gradient(135deg, #0a0e27 0%, #0f1729 100%) !important;
+}
+
+body.dark-mode .drawing-area {
+    background: linear-gradient(135deg, #0f1729 0%, #151f3d 100%) !important;
+    border-color: rgba(91, 110, 225, 0.3) !important;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+body.dark-mode .drawing-area:hover {
+    border-color: rgba(91, 110, 225, 0.5) !important;
+    box-shadow: 0 16px 50px rgba(91, 110, 225, 0.15), inset 0 2px 4px rgba(255, 255, 255, 0.05) !important;
+}
+
+body.dark-mode .group {
+    background: linear-gradient(135deg, #0f1729 0%, #151f3d 100%) !important;
+    border-color: rgba(91, 110, 225, 0.2) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+body.dark-mode .group:hover {
+    border-color: rgba(91, 110, 225, 0.4) !important;
+    box-shadow: 0 6px 24px rgba(91, 110, 225, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+body.dark-mode .group h3 {
+    background: linear-gradient(90deg, #7b8ef5 0%, #8b9efd 50%, #ff8a8a 100%) !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+body.dark-mode .group .btn {
+    background: linear-gradient(135deg, #151f3d 0%, #1a2847 100%) !important;
+    border-color: rgba(91, 110, 225, 0.3) !important;
+    color: #d1d5db !important;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .group .btn:hover {
+    background: linear-gradient(135deg, #1f2d52 0%, #2a3862 100%) !important;
+    border-color: rgba(91, 110, 225, 0.6) !important;
+    color: #e0e7ff !important;
+    box-shadow: 0 8px 24px rgba(91, 110, 225, 0.2) !important;
+}
+
+body.dark-mode .btn {
+    background: linear-gradient(90deg, #151f3d 60%, #1a2847 100%) !important;
+    border-color: rgba(91, 110, 225, 0.3) !important;
+    color: #d1d5db !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+body.dark-mode .btn:hover {
+    background: linear-gradient(135deg, #2a3862 0%, #2f3f6a 100%) !important;
+    border-color: rgba(91, 110, 225, 0.5) !important;
+    color: #e0e7ff !important;
+    box-shadow: 0 8px 24px rgba(91, 110, 225, 0.15) !important;
+}
+
+body.dark-mode .dropdown button {
+    color: #d1d5db !important;
+}
+
+body.dark-mode .dropdown button:hover {
+    background: rgba(91, 110, 225, 0.15) !important;
+    color: #7b8ef5 !important;
+}
+
+body.dark-mode .kbd {
+    background: linear-gradient(90deg, #5b6ee1 60%, #cd676d 100%) !important;
+    box-shadow: 0 2px 8px rgba(91, 110, 225, 0.2) !important;
+}
+
+body.dark-mode .small {
+    color: #a0aec0 !important;
+}
+
+body.dark-mode .shortcut-item {
+    background: rgba(91, 110, 225, 0.1) !important;
+    border-color: rgba(91, 110, 225, 0.2) !important;
+    color: #d1d5db !important;
+}
+
+body.dark-mode .shortcut-item:hover {
+    background: rgba(91, 110, 225, 0.2) !important;
+    border-color: rgba(91, 110, 225, 0.4) !important;
+}
+
+body.dark-mode .legend {
+    background: linear-gradient(135deg, rgba(91, 110, 225, 0.1), rgba(229, 9, 20, 0.05)) !important;
+    border-left-color: rgba(91, 110, 225, 0.5) !important;
+    color: #a0aec0 !important;
+}
+
+/* Dark Mode Profile Modal Styles */
+body.dark-mode #profileModal {
+    background: rgba(0, 0, 0, 0.8) !important;
+}
+
+body.dark-mode #profileModal > div {
+    background: linear-gradient(135deg, #0f1729 0%, #151f3d 100%) !important;
+    border: 1px solid rgba(91, 110, 225, 0.3) !important;
+    color: #d1d5db !important;
+}
+
+body.dark-mode #profileModal h2 {
+    color: #e5e7eb !important;
+}
+
+body.dark-mode #profileModal input,
+body.dark-mode #profileModal label {
+    color: #d1d5db !important;
+}
+
+body.dark-mode #profileModal input {
+    background-color: #0a0e27 !important;
+    border-color: rgba(91, 110, 225, 0.3) !important;
+}
+
+body.dark-mode #profileModal input:focus {
+    border-color: rgba(91, 110, 225, 0.6) !important;
+    box-shadow: 0 0 0 3px rgba(91, 110, 225, 0.1) !important;
+}
+
+body.dark-mode #profileInfo {
+    background: rgba(91, 110, 225, 0.1) !important;
+    border-color: rgba(91, 110, 225, 0.2) !important;
+}
+
+body.dark-mode #profileModal p {
+    color: #d1d5db !important;
+}
+
+body.dark-mode #profileModal button {
+    background: linear-gradient(135deg, #0066cc 0%, #0088ff 100%) !important;
+    color: #fff !important;
+}
+
+body.dark-mode #profileModal button:hover {
+    opacity: 0.9 !important;
+}
+
+/* Dark Mode Reaction Modal */
+body.dark-mode #reactionModal {
+    background: rgba(0, 0, 0, 0.85) !important;
+}
+
+body.dark-mode #reactionModal > div {
+    background: linear-gradient(135deg, #0f1729 0%, #151f3d 100%) !important;
+    border: 1px solid rgba(91, 110, 225, 0.3) !important;
+    color: #d1d5db !important;
+}
+
+body.dark-mode #reactionModal h2 {
+    color: #e5e7eb !important;
+}
+
+body.dark-mode #reactionModal p {
+    color: #d1d5db !important;
+}
+
+body.dark-mode #reactionModal > div > div > div {
+    background: rgba(91, 110, 225, 0.1) !important;
+    color: #a0aec0 !important;
+}
+
+body.dark-mode #reactionDetails > div {
+    background: rgba(91, 110, 225, 0.08) !important;
+    border-left-color: rgba(91, 110, 225, 0.5) !important;
+    color: #d1d5db !important;
+}
+
+/* Dark Mode AI Modal */
+body.dark-mode #aiNameModal > div {
+    background: linear-gradient(135deg, #0f1729 0%, #151f3d 100%) !important;
+    border: 1px solid rgba(91, 110, 225, 0.3) !important;
+    color: #d1d5db !important;
+}
+
+body.dark-mode #aiNameModal > div > * {
+    color: #d1d5db !important;
+}
+
 /* Dark Mode Modal Overrides */
 body.dark-mode .modal {
     background-color: rgba(0, 0, 0, 0.85) !important;

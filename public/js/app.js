@@ -240,9 +240,7 @@ function initDarkMode() {
 }
 
 function toggleDarkMode() {
-    console.log('toggleDarkMode called!');
     const isDark = document.body.classList.toggle('dark-mode');
-    console.log('Dark mode is now:', isDark);
     localStorage.setItem('chemhelp_darkMode', isDark ? 'true' : 'false');
     updateDarkModeButton();
     showNotification(isDark ? 'Dark mode enabled' : 'Dark mode disabled', 'info', 2000);
@@ -1273,7 +1271,7 @@ function getMousePos(evt){
     return { x, y };
 }
 function findNodeAt(x,y){
-    for(let i=nodes.length-1;i>=0;i--){
+    for(let i=0;i<nodes.length;i++){
         const n = nodes[i];
         const d = Math.hypot(n.x-x,n.y-y);
         if(d <= 18) return n;
@@ -1371,8 +1369,13 @@ function draw(){
 }
 function drawGrid(){
     const step = 30;
+    const isDarkMode = document.body.classList.contains('dark-mode');
+    const gridColor = isDarkMode ? '#444' : '#000';
+    const gridAlpha = isDarkMode ? 0.15 : 0.06;
+    
     ctx.save();
-    ctx.globalAlpha = 0.06; ctx.strokeStyle = '#000';
+    ctx.globalAlpha = gridAlpha;
+    ctx.strokeStyle = gridColor;
     for(let x=0;x<canvas.width;x+=step){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke(); }
     for(let y=0;y<canvas.height;y+=step){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke(); }
     ctx.restore();
@@ -1617,7 +1620,14 @@ canvas.addEventListener('dblclick', (e)=>{
 
 window.addEventListener('keydown',(e)=>{
     if(e.key === 'Delete') {
-        if(nodes.length) { removeNode(nodes[nodes.length-1].id); pushHistory(); updateCounts(); draw(); }
+        const m = getMousePos(e);
+        const node = findNodeAt(m.x,m.y);
+        if(node) {
+            removeNode(node.id);
+            pushHistory();
+            updateCounts();
+            draw();
+        }
     }
 });
 
@@ -2844,20 +2854,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // Dark mode toggle
     const darkModeBtn = document.getElementById('darkModeToggle');
     if (darkModeBtn) {
-        // Remove any existing listeners
+        // Remove any existing listeners to prevent duplicates
         darkModeBtn.onclick = null;
-        // Add fresh event listener
+        darkModeBtn.removeAttribute('onclick');
+        // Add single event listener
         darkModeBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Dark mode button clicked via listener');
             toggleDarkMode();
         });
-        // Also set inline onclick as backup
-        darkModeBtn.setAttribute('onclick', 'toggleDarkMode(); return false;');
-        console.log('✅ Dark mode button listeners set up');
-    } else {
-        console.warn('⚠️ Dark mode button not found in DOM');
     }
     
     const userProfileBtn = document.getElementById('userProfileBtn');
@@ -2925,6 +2930,258 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('Setting up reactions...');
     setupReactionsListeners();
     loadReactions();
+
+    // ==================== QUICK ADD SETUP ====================
+    setupQuickAdd();
+
+    // ==================== PUBCHEM INTEGRATION ====================
+    setupPubChemSearch();
     
     console.log('=== DOMContentLoaded completed ===');
 });
+
+// ==================== QUICK ADD FUNCTIONS ====================
+
+function setupQuickAdd() {
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    // Quick Elements
+    const elements = ['C', 'N', 'O', 'S', 'P', 'Cl'];
+    elements.forEach(elem => {
+        const btn = document.getElementById(`quickAdd${elem}`);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                const newNode = QuickAdd.addElement(elem, centerX, centerY);
+                if (newNode) {
+                    nodes.push(newNode);
+                    draw();
+                    showNotification(`Added ${elem}`, 'info', 1000);
+                }
+            });
+        }
+    });
+
+    // Quick Functional Groups
+    const groups = {
+        'Carbonyl': 'carbonyl',
+        'OH': 'hydroxyl',
+        'NH2': 'amine',
+        'COOH': 'carboxyl',
+        'CHO': 'aldehyde',
+        'COOR': 'ester'
+    };
+
+    Object.entries(groups).forEach(([btnId, groupType]) => {
+        const btn = document.getElementById(`quickAdd${btnId}`);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                const group = QuickAdd.addFunctionalGroup(groupType, centerX, centerY);
+                if (group) {
+                    nodes.push(...group.atoms);
+                    bonds.push(...group.bonds);
+                    draw();
+                    showNotification(`Added ${group.label}`, 'info', 1000);
+                }
+            });
+        }
+    });
+
+    // Quick Rings
+    const rings = {
+        'Benzene': 'benzene',
+        'Cyclo6': 'cyclohexane',
+        'Cyclo5': 'cyclopentane',
+        'Pyrrole': 'pyrrole'
+    };
+
+    Object.entries(rings).forEach(([btnId, ringType]) => {
+        const btn = document.getElementById(`quickAdd${btnId}`);
+        if (btn) {
+            btn.addEventListener('click', () => {
+                const ring = QuickAdd.addRing(ringType, centerX, centerY);
+                if (ring) {
+                    nodes.push(...ring.atoms);
+                    bonds.push(...ring.bonds);
+                    draw();
+                    showNotification(`Added ${ring.label}`, 'info', 1000);
+                }
+            });
+        }
+    });
+
+    // Quick Duplicate
+    const duplicateBtn = document.getElementById('quickDuplicate');
+    if (duplicateBtn) {
+        duplicateBtn.addEventListener('click', () => {
+            const result = QuickAdd.duplicateStructure(100, 0);
+            if (result) {
+                nodes.push(...result.newNodes);
+                bonds.push(...result.newBonds);
+                draw();
+                showNotification('Structure duplicated', 'success', 1000);
+            }
+        });
+    }
+
+    // Quick Clear
+    const clearBtn = document.getElementById('quickClear');
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            if (QuickAdd.clearStructure()) {
+                draw();
+                showNotification('Structure cleared', 'info', 1000);
+            }
+        });
+    }
+}
+
+// ==================== PUBCHEM INTEGRATION FUNCTIONS ====================
+
+function setupPubChemSearch() {
+    const searchInput = document.getElementById('pubchemSearch');
+    const searchBtn = document.getElementById('pubchemSearchBtn');
+    const resultsDiv = document.getElementById('pubchemResults');
+
+    if (!searchBtn) return;
+
+    // Check if PubChemIntegration is loaded
+    if (typeof PubChemIntegration === 'undefined') {
+        resultsDiv.innerHTML = '<p style="color:#d32f2f;">⚠️ PubChemIntegration module not loaded. Please refresh the page (Ctrl+F5).</p>';
+        return;
+    }
+
+    searchBtn.addEventListener('click', async () => {
+        const query = searchInput.value.trim();
+        if (!query) {
+            showNotification('Enter a molecule name', 'error', 1500);
+            return;
+        }
+
+        searchBtn.disabled = true;
+        searchBtn.textContent = '⏳';
+        resultsDiv.innerHTML = '<p style="color:#888;">Searching PubChem...</p>';
+
+        try {
+            const results = await PubChemIntegration.searchCompound(query);
+            
+            if (!results.success) {
+                resultsDiv.innerHTML = `<p style="color:#d32f2f;">${results.message}</p>`;
+            } else {
+                let html = '<div style="max-height:300px;overflow-y:auto;">';
+                
+                for (const cid of results.results.slice(0, 5)) {
+                    const info = await PubChemIntegration.getCompoundInfo(cid);
+                    if (info.success) {
+                        html += `
+                            <div style="padding:8px;border:1px solid #e0e0e0;border-radius:6px;margin-bottom:8px;cursor:pointer;transition:all 0.2s;" 
+                                 onmouseover="this.style.background='#f5f5f5';this.style.boxShadow='0 2px 8px rgba(0,0,0,0.1)'"
+                                 onmouseout="this.style.background='transparent';this.style.boxShadow='none'"
+                                 onclick="importCompoundFromPubChem('${cid}')">
+                                <strong style="color:#1a3a5c;">${info.name}</strong>
+                                <div style="font-size:0.75rem;color:#666;">
+                                    ${info.molecularFormula} | MW: ${info.molecularWeight.toFixed(2)}
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+                
+                html += '</div>';
+                resultsDiv.innerHTML = html;
+            }
+        } catch (error) {
+            console.error('PubChem search error:', error);
+            resultsDiv.innerHTML = `<p style="color:#d32f2f;">Error: ${error.message}</p>`;
+        } finally {
+            searchBtn.disabled = false;
+            searchBtn.textContent = '🔍';
+        }
+    });
+
+    // Allow Enter to trigger search
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchBtn.click();
+            }
+        });
+    }
+}
+
+async function importCompoundFromPubChem(cid) {
+    const importBtn = event.currentTarget;
+    importBtn.style.opacity = '0.5';
+    importBtn.style.pointerEvents = 'none';
+    importBtn.textContent = '⏳ Importing...';
+
+    try {
+        const result = await PubChemIntegration.importCompound(cid);
+        
+        if (!result.success) {
+            showNotification(`Failed: ${result.message}`, 'error', 2000);
+            return;
+        }
+
+        // Center the imported structure
+        const { structure } = result;
+        const avgX = structure.nodes.reduce((sum, n) => sum + n.x, 0) / structure.nodes.length;
+        const avgY = structure.nodes.reduce((sum, n) => sum + n.y, 0) / structure.nodes.length;
+
+        const offsetX = (canvas.width / 2) - avgX;
+        const offsetY = (canvas.height / 2) - avgY;
+
+        // Adjust node IDs to avoid conflicts
+        const maxId = Math.max(...(nodes.map(n => n.id) || [0]), 0);
+        structure.nodes.forEach(node => {
+            node.id += maxId + 1;
+            node.x += offsetX;
+            node.y += offsetY;
+        });
+
+        structure.bonds.forEach(bond => {
+            bond.aId += maxId + 1;
+            bond.bId += maxId + 1;
+        });
+
+        // Add to canvas
+        nodes.push(...structure.nodes);
+        bonds.push(...structure.bonds);
+
+        draw();
+        showNotification(
+            `✓ Imported: ${result.name}\n${result.molecularFormula}`,
+            'success',
+            3000
+        );
+
+        // Track the import (fire and forget)
+        try {
+            const userEmail = localStorage.getItem('userEmail') || 'anonymous';
+            fetch('/api/track/compound-import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cid: result.cid,
+                    name: result.name,
+                    formula: result.molecularFormula,
+                    userEmail: userEmail
+                })
+            }).catch(() => {}); // Ignore tracking errors
+        } catch (e) {
+            console.log('Tracking skipped');
+        }
+
+        // Clear results
+        document.getElementById('pubchemResults').innerHTML = '';
+        document.getElementById('pubchemSearch').value = '';
+
+    } catch (error) {
+        console.error('Import error:', error);
+        showNotification(`Import failed: ${error.message}`, 'error', 2000);
+    } finally {
+        importBtn.style.opacity = '1';
+        importBtn.style.pointerEvents = 'auto';
+        importBtn.textContent = importBtn.innerHTML;
+    }
+}
