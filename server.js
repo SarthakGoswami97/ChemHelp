@@ -4,6 +4,7 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const bcrypt = require('bcrypt');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -271,17 +272,46 @@ app.post('/api/register', async (req, res) => {
             return res.status(400).json({ error: 'Password must be at least 6 characters' });
         }
         
-        // Create user with database
-        const newUser = await db.createUser(fullName.trim(), email.toLowerCase(), password, null);
-        
-        res.status(201).json({ success: true, message: 'User registered successfully', user: newUser });
-    } catch (error) {
-        console.error('Error registering user:', error.message);
-        
-        if (error.message.includes('Email already exists')) {
+        // Check if email already exists
+        const existingUser = await db.getUserByEmail(email.toLowerCase());
+        if (existingUser) {
             return res.status(409).json({ error: 'Email already exists' });
         }
         
+        // Check if email service is configured
+        if (!emailService.isConfigured()) {
+            // Direct registration without OTP
+            const user = await db.createUser(fullName, email.toLowerCase(), password);
+            
+            await db.logActivity(user.id, 'register', { email: user.email, note: 'no OTP - email not configured' });
+            
+            return res.json({ 
+                success: true,
+                requiresOTP: false,
+                user: {
+                    id: user.id,
+                    name: user.fullName,
+                    email: user.email,
+                    createdAt: user.createdAt
+                }
+            });
+        }
+        
+        // Generate and send OTP for email verification
+        const otp = emailService.generateOTP();
+        await db.createOTP(email.toLowerCase(), otp);
+        await emailService.sendOTP(email.toLowerCase(), otp);
+        
+        // Store registration data temporarily (we'll create user after OTP verification)
+        // For now, just send OTP and require verification
+        res.json({ 
+            success: true, 
+            message: 'Verification code sent to your email',
+            requiresOTP: true,
+            tempData: { fullName, email: email.toLowerCase() }
+        });
+    } catch (error) {
+        console.error('Error registering user:', error.message);
         res.status(500).json({ error: 'Failed to register user' });
     }
 });
@@ -311,6 +341,22 @@ app.post('/api/login', async (req, res) => {
         
         if (!isPasswordValid) {
             return res.status(401).json({ error: 'Invalid credentials' });
+        }
+        
+        // Check if email service is configured
+        if (!emailService.isConfigured()) {
+            // Direct login without OTP
+            await db.logActivity(user.id, 'login', { email: user.email, note: 'no OTP - email not configured' });
+            return res.json({ 
+                success: true,
+                requiresOTP: false,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    createdAt: user.created_at
+                }
+            });
         }
         
         // Password is correct - Generate and send OTP
@@ -381,6 +427,49 @@ app.post('/api/verify-otp', async (req, res) => {
     } catch (error) {
         console.error('Error verifying OTP:', error.message);
         res.status(500).json({ error: 'OTP verification failed', details: error.message });
+    }
+});
+
+// API endpoint to complete registration after OTP verification
+app.post('/api/complete-registration', async (req, res) => {
+    try {
+        const { fullName, email, password, otp } = req.body;
+        
+        // Input validation
+        if (!fullName || !email || !password || !otp) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+        
+        // Verify OTP
+        const isValid = await db.verifyOTP(email.toLowerCase(), otp);
+        
+        if (!isValid) {
+            await db.incrementOTPAttempts(email.toLowerCase());
+            return res.status(401).json({ error: 'Invalid or expired OTP' });
+        }
+        
+        // OTP is valid - Create user
+        const newUser = await db.createUser(fullName.trim(), email.toLowerCase(), password, null);
+        
+        // Track registration
+        try {
+            await db.logActivity(newUser.id, 'registration', { email: newUser.email });
+            await db.deleteOTPsByEmail(email.toLowerCase());
+        } catch (trackErr) {
+            console.error('Failed to track registration:', trackErr.message);
+        }
+        
+        // Return user data without password
+        const { password: _, ...userProfile } = newUser;
+        res.status(201).json({ success: true, user: userProfile, message: 'Account created successfully' });
+    } catch (error) {
+        console.error('Error completing registration:', error.message);
+        
+        if (error.message.includes('Email already exists')) {
+            return res.status(409).json({ error: 'Email already exists' });
+        }
+        
+        res.status(500).json({ error: 'Failed to complete registration' });
     }
 });
 

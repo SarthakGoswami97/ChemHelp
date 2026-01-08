@@ -530,38 +530,8 @@
                 </button>
             </form>
 
-            <!-- OTP Verification Form -->
-            <form id="otpForm" class="auth-form hidden fade-in">
-                <div style="text-align: center; margin-bottom: 24px;">
-                    <div style="font-size: 3rem; margin-bottom: 12px;">🔐</div>
-                    <h3 style="color: #1e293b; margin-bottom: 8px;">Check your email</h3>
-                    <p style="color: #64748b; font-size: 0.9rem;">We sent a verification code to<br><strong id="otpEmailDisplay"></strong></p>
-                </div>
-
-                <div class="form-group">
-                    <label for="otpInput">Verification Code</label>
-                    <div class="input-wrapper">
-                        <span class="input-icon">🔑</span>
-                        <input type="text" id="otpInput" placeholder="Enter 6-digit code" maxlength="6" 
-                               style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; font-weight: 600;">
-                    </div>
-                    <div class="error-text" id="otpError"></div>
-                    <p style="color: #94a3b8; font-size: 0.8rem; text-align: center; margin-top: 8px;">
-                        Code expires in 10 minutes
-                    </p>
-                </div>
-
-                <button type="submit" class="submit-btn" id="otpSubmitBtn">
-                    Verify & Continue
-                </button>
-
-                <button type="button" class="guest-btn" style="margin-top: 12px;" onclick="backToAuth()">
-                    ← Back
-                </button>
-            </form>
-
             <!-- Divider -->
-            <div class="divider" id="dividerSection">
+            <div class="divider">
                 <span>or</span>
             </div>
 
@@ -659,49 +629,8 @@
                 btn.innerHTML = '<span class="spinner"></span> Please wait...';
             } else {
                 btn.disabled = false;
-                if (btnId === 'loginSubmitBtn') btn.textContent = 'Sign In';
-                else if (btnId === 'signupSubmitBtn') btn.textContent = 'Create Account';
-                else if (btnId === 'otpSubmitBtn') btn.textContent = 'Verify & Continue';
+                btn.textContent = btnId === 'loginSubmitBtn' ? 'Sign In' : 'Create Account';
             }
-        }
-
-        // Pending auth data
-        let pendingAuthData = null;
-        let pendingAuthType = null; // 'login' or 'signup'
-
-        // Show OTP form
-        function showOTPForm(email, type) {
-            pendingAuthType = type;
-            document.getElementById('otpEmailDisplay').textContent = email;
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('signupForm').classList.add('hidden');
-            document.getElementById('otpForm').classList.remove('hidden');
-            document.getElementById('dividerSection').style.display = 'none';
-            document.querySelector('.guest-btn').style.display = 'none';
-            document.querySelector('.auth-tabs').style.display = 'none';
-            document.getElementById('authTitle').textContent = 'Verify your email';
-            document.getElementById('authSubtitle').textContent = 'Enter the code we sent you';
-            document.getElementById('otpInput').focus();
-        }
-
-        // Back to auth forms
-        function backToAuth() {
-            document.getElementById('otpForm').classList.add('hidden');
-            document.getElementById('dividerSection').style.display = 'flex';
-            document.querySelectorAll('.guest-btn').forEach(el => el.style.display = 'flex');
-            document.querySelector('.auth-tabs').style.display = 'flex';
-            if (pendingAuthType === 'login') {
-                document.getElementById('loginForm').classList.remove('hidden');
-                document.getElementById('authTitle').textContent = 'Welcome back';
-                document.getElementById('authSubtitle').textContent = 'Enter your credentials to access your account';
-            } else {
-                document.getElementById('signupForm').classList.remove('hidden');
-                document.getElementById('authTitle').textContent = 'Create your account';
-                document.getElementById('authSubtitle').textContent = 'Start exploring chemistry with ChemHelp';
-            }
-            pendingAuthData = null;
-            pendingAuthType = null;
-            clearMessages();
         }
 
         // Validate email
@@ -750,10 +679,8 @@
                         showSuccess('✓ Login successful! Redirecting...');
                         setTimeout(() => window.location.href = 'index.html', 1000);
                     } else if (data.requiresOTP) {
-                        // OTP flow - show OTP form
-                        pendingAuthData = { email, password };
-                        showOTPForm(email, 'login');
-                        showSuccess(data.message || 'Verification code sent to your email');
+                        // OTP flow - not implemented in this version
+                        showSuccess(data.message || 'OTP sent to your email');
                     }
                 } else {
                     showGlobalError(data.error || 'Login failed. Please try again.');
@@ -825,9 +752,7 @@
                         showSuccess('✓ Account created! Redirecting...');
                         setTimeout(() => window.location.href = 'index.html', 1000);
                     } else if (data.requiresOTP) {
-                        // OTP flow - show OTP form
-                        pendingAuthData = { fullName, email, password };
-                        showOTPForm(email, 'signup');
+                        // OTP flow
                         showSuccess(data.message || 'Verification code sent to your email');
                     }
                 } else {
@@ -853,65 +778,6 @@
             showSuccess('✓ Continuing as guest...');
             setTimeout(() => window.location.href = 'index.html', 800);
         }
-
-        // OTP form submission
-        document.getElementById('otpForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            clearMessages();
-
-            const otp = document.getElementById('otpInput').value.trim();
-
-            if (!otp || otp.length !== 6) {
-                showError('otpError', 'Please enter the 6-digit code');
-                return;
-            }
-
-            setLoading('otpSubmitBtn', true);
-
-            try {
-                let response, data;
-
-                if (pendingAuthType === 'signup') {
-                    // Complete registration with OTP
-                    response = await fetch('/api/complete-registration', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            fullName: pendingAuthData.fullName,
-                            email: pendingAuthData.email,
-                            password: pendingAuthData.password,
-                            otp
-                        })
-                    });
-                } else {
-                    // Verify login OTP
-                    response = await fetch('/api/verify-otp', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            email: pendingAuthData.email,
-                            otp
-                        })
-                    });
-                }
-
-                data = await response.json();
-
-                if (response.ok && data.success && data.user) {
-                    localStorage.setItem('chemhelp_currentUser', JSON.stringify(data.user));
-                    localStorage.setItem('userEmail', data.user.email);
-                    showSuccess('✓ Verified! Redirecting...');
-                    setTimeout(() => window.location.href = 'index.html', 1000);
-                } else {
-                    showError('otpError', data.error || 'Invalid or expired code');
-                }
-            } catch (err) {
-                console.error('OTP verification error:', err);
-                showError('otpError', 'Verification failed. Please try again.');
-            } finally {
-                setLoading('otpSubmitBtn', false);
-            }
-        });
 
         // Check if already logged in
         (function checkAuth() {
