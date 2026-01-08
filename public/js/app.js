@@ -2310,8 +2310,14 @@ async function showAiNameTab() {
         }
         
         tab.innerHTML = result;
-        // Recalculate canvas size after result is displayed
-        setTimeout(() => resize(), 50);
+        
+        // Force resize after content is added to DOM
+        // Using requestAnimationFrame ensures resize happens after DOM update
+        requestAnimationFrame(() => {
+            resize();
+            // Double-check after a short delay for safety
+            setTimeout(() => resize(), 100);
+        });
         
     } catch (error) {
         console.error('Error in showAiNameTab:', error);
@@ -2356,6 +2362,11 @@ async function showAiReactionTab() {
             tab.textContent = "No reaction predicted.";
         } finally {
             spinner.style.display = 'none';
+            // Force resize after content is displayed
+            requestAnimationFrame(() => {
+                resize();
+                setTimeout(() => resize(), 100);
+            });
         }
     } else {
         tab.textContent = "Enable Gemini API for AI-powered reaction prediction.";
