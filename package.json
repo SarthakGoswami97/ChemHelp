@@ -25,6 +25,7 @@
     "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "multer": "^2.0.2",
+    "nodemailer": "^7.0.12",
     "openai": "^6.15.0",
     "sharp": "^0.34.5",
     "sqlite3": "^5.1.7"

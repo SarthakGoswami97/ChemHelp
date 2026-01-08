@@ -61,6 +61,17 @@ CREATE TABLE IF NOT EXISTS activity_log (
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE SET NULL
 );
 
+-- OTP Codes Table (for login verification)
+CREATE TABLE IF NOT EXISTS otp_codes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL,
+    otp TEXT NOT NULL,
+    expiresAt DATETIME NOT NULL,
+    attempts INTEGER DEFAULT 0,
+    verified BOOLEAN DEFAULT 0,
+    createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Create indexes for faster queries
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_structures_userId ON structures(userId);
@@ -69,3 +80,5 @@ CREATE INDEX IF NOT EXISTS idx_compound_imports_userId ON compound_imports(userI
 CREATE INDEX IF NOT EXISTS idx_compound_imports_cid ON compound_imports(cid);
 CREATE INDEX IF NOT EXISTS idx_activity_log_userId ON activity_log(userId);
 CREATE INDEX IF NOT EXISTS idx_activity_log_action ON activity_log(action);
+CREATE INDEX IF NOT EXISTS idx_otp_codes_email ON otp_codes(email);
+CREATE INDEX IF NOT EXISTS idx_otp_codes_expiresAt ON otp_codes(expiresAt);

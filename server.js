@@ -10,6 +10,9 @@ const PORT = process.env.PORT || 5000;
 // Database module
 const db = require('./database/db');
 
+// Email service
+const emailService = require('./src/services/email-service');
+
 // AI Services
 const aiRoutes = require('./src/api/ai-routes');
 
@@ -79,6 +82,22 @@ db.initDatabase()
         dbReady = true;
         dbInstance = database;
         console.log('✅ Database initialized successfully');
+        
+        // Clean expired OTPs on startup
+        db.cleanExpiredOTPs()
+            .then(count => {
+                if (count > 0) console.log(`🧹 Cleaned ${count} expired OTP codes`);
+            })
+            .catch(err => console.error('Failed to clean OTPs:', err));
+        
+        // Set up periodic cleanup (every hour)
+        setInterval(() => {
+            db.cleanExpiredOTPs()
+                .then(count => {
+                    if (count > 0) console.log(`🧹 Cleaned ${count} expired OTP codes`);
+                })
+                .catch(err => console.error('Failed to clean OTPs:', err));
+        }, 60 * 60 * 1000);
     })
     .catch(err => {
         console.error('❌ Failed to initialize database:', err);
@@ -267,7 +286,7 @@ app.post('/api/register', async (req, res) => {
     }
 });
 
-// API endpoint to login user
+// API endpoint to login user (Step 1: Send OTP)
 app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -294,10 +313,64 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
         
-        // Track login
+        // Password is correct - Generate and send OTP
+        const otp = emailService.generateOTP();
+        await db.createOTP(email.toLowerCase(), otp);
+        await emailService.sendOTP(email.toLowerCase(), otp);
+        
+        // Log activity
+        try {
+            await db.logActivity(user.id, 'otp_sent', { email: user.email });
+        } catch (trackErr) {
+            console.error('Failed to track OTP send:', trackErr.message);
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'OTP sent to your email',
+            requiresOTP: true 
+        });
+    } catch (error) {
+        console.error('Error logging in:', error.message);
+        res.status(500).json({ error: 'Login failed', details: error.message });
+    }
+});
+
+// API endpoint to verify OTP (Step 2: Complete login)
+app.post('/api/verify-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        
+        // Input validation
+        if (!email || !otp) {
+            return res.status(400).json({ error: 'Missing email or OTP' });
+        }
+        
+        if (typeof email !== 'string' || typeof otp !== 'string') {
+            return res.status(400).json({ error: 'Invalid input format' });
+        }
+        
+        // Verify OTP
+        const isValid = await db.verifyOTP(email.toLowerCase(), otp);
+        
+        if (!isValid) {
+            // Increment attempt counter
+            await db.incrementOTPAttempts(email.toLowerCase());
+            return res.status(401).json({ error: 'Invalid or expired OTP' });
+        }
+        
+        // OTP is valid - Get user and complete login
+        const user = await db.getUserByEmail(email.toLowerCase());
+        
+        if (!user) {
+            return res.status(401).json({ error: 'User not found' });
+        }
+        
+        // Track successful login
         try {
             await db.updateUserLogin(user.id);
-            await db.logActivity(user.id, 'login', { email: user.email });
+            await db.logActivity(user.id, 'login', { email: user.email, method: 'otp' });
+            await db.deleteOTPsByEmail(email.toLowerCase()); // Clean up OTPs
         } catch (trackErr) {
             console.error('Failed to track login:', trackErr.message);
         }
@@ -306,8 +379,8 @@ app.post('/api/login', async (req, res) => {
         const { password: _, ...userProfile } = user;
         res.json({ success: true, user: userProfile });
     } catch (error) {
-        console.error('Error logging in:', error.message);
-        res.status(500).json({ error: 'Login failed', details: error.message });
+        console.error('Error verifying OTP:', error.message);
+        res.status(500).json({ error: 'OTP verification failed', details: error.message });
     }
 });
 

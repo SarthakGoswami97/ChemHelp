@@ -482,6 +482,123 @@ function getPopularCompounds(limit = 20) {
     });
 }
 
+/**
+ * Create OTP for user login
+ * @param {string} email - User email
+ * @param {string} otp - 6-digit OTP code
+ * @returns {Promise<number>} OTP ID
+ */
+function createOTP(email, otp) {
+    return new Promise((resolve, reject) => {
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        const sql = 'INSERT INTO otp_codes (email, otp, expiresAt) VALUES (?, ?, ?)';
+        
+        db.run(sql, [email, otp, expiresAt.toISOString()], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.lastID);
+            }
+        });
+    });
+}
+
+/**
+ * Verify OTP code
+ * @param {string} email - User email
+ * @param {string} otp - OTP code to verify
+ * @returns {Promise<boolean>} True if valid, false otherwise
+ */
+function verifyOTP(email, otp) {
+    return new Promise((resolve, reject) => {
+        const now = new Date().toISOString();
+        const sql = `
+            SELECT * FROM otp_codes 
+            WHERE email = ? AND otp = ? AND expiresAt > ? AND verified = 0
+            ORDER BY createdAt DESC LIMIT 1
+        `;
+        
+        db.get(sql, [email, otp, now], (err, row) => {
+            if (err) {
+                reject(err);
+            } else if (!row) {
+                resolve(false);
+            } else {
+                // Mark as verified
+                const updateSql = 'UPDATE otp_codes SET verified = 1 WHERE id = ?';
+                db.run(updateSql, [row.id], (updateErr) => {
+                    if (updateErr) {
+                        reject(updateErr);
+                    } else {
+                        resolve(true);
+                    }
+                });
+            }
+        });
+    });
+}
+
+/**
+ * Increment OTP attempt counter
+ * @param {string} email - User email
+ * @returns {Promise<void>}
+ */
+function incrementOTPAttempts(email) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            UPDATE otp_codes 
+            SET attempts = attempts + 1 
+            WHERE email = ? AND verified = 0
+        `;
+        
+        db.run(sql, [email], (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
+/**
+ * Clean expired OTP codes (run periodically)
+ * @returns {Promise<number>} Number of deleted rows
+ */
+function cleanExpiredOTPs() {
+    return new Promise((resolve, reject) => {
+        const now = new Date().toISOString();
+        const sql = 'DELETE FROM otp_codes WHERE expiresAt < ?';
+        
+        db.run(sql, [now], function(err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.changes);
+            }
+        });
+    });
+}
+
+/**
+ * Delete all OTPs for an email (for security after successful login)
+ * @param {string} email - User email
+ * @returns {Promise<void>}
+ */
+function deleteOTPsByEmail(email) {
+    return new Promise((resolve, reject) => {
+        const sql = 'DELETE FROM otp_codes WHERE email = ?';
+        
+        db.run(sql, [email], (err) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve();
+            }
+        });
+    });
+}
+
 // Export all functions
 module.exports = {
     initDatabase,
@@ -498,12 +615,18 @@ module.exports = {
     getUserReactions,
     getAllUsers,
     getDatabaseStats,
-    // New tracking functions
+    // Tracking functions
     logActivity,
     trackCompoundImport,
     updateUserLogin,
     getCompoundImports,
     getActivityLog,
     getUserStats,
-    getPopularCompounds
+    getPopularCompounds,
+    // OTP functions
+    createOTP,
+    verifyOTP,
+    incrementOTPAttempts,
+    cleanExpiredOTPs,
+    deleteOTPsByEmail
 };

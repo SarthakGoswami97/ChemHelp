@@ -240,9 +240,22 @@
                 <div class="error" id="confirmError"></div>
             </div>
 
+            <!-- OTP Input (hidden by default) -->
+            <div class="form-group" id="otpGroup" style="display: none;">
+                <label for="otp">Enter 6-Digit Code</label>
+                <input type="text" id="otp" placeholder="000000" maxlength="6" 
+                       style="text-align: center; font-size: 1.5rem; letter-spacing: 0.5rem; font-family: monospace;" />
+                <div class="error" id="otpError"></div>
+                <div style="text-align: center; margin-top: 8px; font-size: 0.85rem; color: #64748b;">
+                    Check your email for the verification code
+                </div>
+            </div>
+
             <div class="form-actions">
                 <button type="button" id="loginBtn">Login</button>
                 <button type="button" id="signupBtn">Sign Up</button>
+                <button type="button" id="verifyBtn" style="display: none;">Verify Code</button>
+                <button type="button" id="backBtn" style="display: none; background: #6b7280;">Back</button>
             </div>
         </form>
 
@@ -357,7 +370,7 @@
                 return;
             }
 
-            // Try server login first
+            // Try server login first (will send OTP)
             try {
                 const response = await fetch('/api/login', {
                     method: 'POST',
@@ -365,19 +378,27 @@
                     body: JSON.stringify({ email, password })
                 });
                 
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.success && data.user) {
-                        localStorage.setItem('chemhelp_currentUser', JSON.stringify(data.user));
-                        document.getElementById('successMsg').textContent = 'Login successful! Redirecting...';
-                        document.getElementById('successMsg').style.display = 'block';
-                        setTimeout(() => window.location.href = 'index.html', 1500);
-                        return;
-                    }
+                const data = await response.json();
+                
+                if (response.ok && data.requiresOTP) {
+                    // OTP sent - show OTP input
+                    showOTPStep(email);
+                    document.getElementById('successMsg').textContent = data.message || 'OTP sent to your email';
+                    document.getElementById('successMsg').style.display = 'block';
+                    return;
                 }
                 
-                // If server returns 401, show error
-                if (response.status === 401) {
+                if (response.ok && data.success && data.user) {
+                    // Direct login (backward compatibility)
+                    localStorage.setItem('chemhelp_currentUser', JSON.stringify(data.user));
+                    document.getElementById('successMsg').textContent = 'Login successful! Redirecting...';
+                    document.getElementById('successMsg').style.display = 'block';
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    return;
+                }
+                
+                // If server returns error
+                if (response.status === 401 || !data.success) {
                     showError('generalError', 'Invalid email or password');
                     return;
                 }
@@ -504,12 +525,94 @@
             toggleAuthMode();
         });
 
-        document.getElementById('authForm').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                if (isSignupMode) signup();
-                else login();
+        document.getElementById('verifyBtn').addEventListener('click', verifyOTP);
+
+        document.getElementById('backBtn').addEventListener('click', () => {
+            hideOTPStep();
+        });
+
+        // Auto-submit OTP when 6 digits entered
+        document.getElementById('otp').addEventListener('input', (e) => {
+            e.target.value = e.target.value.replace(/[^0-9]/g, '');
+            if (e.target.value.length === 6) {
+                setTimeout(() => verifyOTP(), 300);
             }
         });
+
+        document.getElementById('authForm').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const otpGroup = document.getElementById('otpGroup');
+                if (otpGroup.style.display !== 'none') {
+                    verifyOTP();
+                } else if (isSignupMode) {
+                    signup();
+                } else {
+                    login();
+                }
+            }
+        });
+
+        let pendingLoginEmail = '';
+
+        function showOTPStep(email) {
+            pendingLoginEmail = email;
+            document.getElementById('email').parentElement.style.display = 'none';
+            document.getElementById('password').parentElement.style.display = 'none';
+            document.getElementById('otpGroup').style.display = 'block';
+            document.getElementById('loginBtn').style.display = 'none';
+            document.getElementById('signupBtn').style.display = 'none';
+            document.getElementById('verifyBtn').style.display = 'inline-block';
+            document.getElementById('backBtn').style.display = 'inline-block';
+            document.getElementById('otp').focus();
+        }
+
+        function hideOTPStep() {
+            pendingLoginEmail = '';
+            document.getElementById('email').parentElement.style.display = 'block';
+            document.getElementById('password').parentElement.style.display = 'block';
+            document.getElementById('otpGroup').style.display = 'none';
+            document.getElementById('loginBtn').style.display = 'inline-block';
+            document.getElementById('signupBtn').style.display = 'inline-block';
+            document.getElementById('verifyBtn').style.display = 'none';
+            document.getElementById('backBtn').style.display = 'none';
+            document.getElementById('otp').value = '';
+            clearErrors();
+        }
+
+        async function verifyOTP() {
+            clearErrors();
+            const otp = document.getElementById('otp').value.trim();
+            
+            if (!otp || otp.length !== 6) {
+                showError('otpError', 'Please enter a 6-digit code');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: pendingLoginEmail, otp })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success && data.user) {
+                    localStorage.setItem('chemhelp_currentUser', JSON.stringify(data.user));
+                    localStorage.setItem('userEmail', data.user.email);
+                    document.getElementById('successMsg').textContent = '✓ Verified! Redirecting...';
+                    document.getElementById('successMsg').style.display = 'block';
+                    setTimeout(() => window.location.href = 'index.html', 1500);
+                    return;
+                }
+                
+                showError('otpError', data.error || 'Invalid or expired code');
+            } catch (err) {
+                console.error('OTP verification error:', err);
+                showError('otpError', 'Verification failed. Please try again.');
+            }
+        }
     </script>
 </body>
 </html>
