@@ -7,7 +7,7 @@ node_modules/
 .env.*.local
 
 # Database files (optional - uncomment if you don't want to track)
-# database/*.db
+database/*.db
 
 # Uploads
 uploads/
