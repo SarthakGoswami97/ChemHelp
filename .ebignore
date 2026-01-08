@@ -1,0 +1,7 @@
+# Don't deploy these to Elastic Beanstalk
+node_modules/
+.git/
+.env
+*.log
+uploads/
+database/*.db
