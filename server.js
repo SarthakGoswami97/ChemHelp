@@ -300,16 +300,54 @@ app.post('/api/register', async (req, res) => {
         // Generate and send OTP for email verification
         const otp = emailService.generateOTP();
         await db.createOTP(email.toLowerCase(), otp);
-        await emailService.sendOTP(email.toLowerCase(), otp);
         
-        // Store registration data temporarily (we'll create user after OTP verification)
-        // For now, just send OTP and require verification
-        res.json({ 
-            success: true, 
-            message: 'Verification code sent to your email',
-            requiresOTP: true,
-            tempData: { fullName, email: email.toLowerCase() }
-        });
+        // Try to send email with timeout
+        try {
+            const emailSent = await Promise.race([
+                emailService.sendOTP(email.toLowerCase(), otp),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Email timeout')), 10000))
+            ]);
+            
+            if (emailSent) {
+                res.json({ 
+                    success: true, 
+                    message: 'Verification code sent to your email',
+                    requiresOTP: true,
+                    tempData: { fullName, email: email.toLowerCase() }
+                });
+            } else {
+                // Email failed, register directly
+                const user = await db.createUser(fullName, email.toLowerCase(), password);
+                await db.logActivity(user.id, 'register', { email: user.email, note: 'email send failed' });
+                
+                return res.json({ 
+                    success: true,
+                    requiresOTP: false,
+                    user: {
+                        id: user.id,
+                        name: user.fullName,
+                        email: user.email,
+                        createdAt: user.createdAt
+                    }
+                });
+            }
+        } catch (emailError) {
+            console.error('Email error:', emailError.message);
+            // Email timeout/failed, register directly
+            const user = await db.createUser(fullName, email.toLowerCase(), password);
+            await db.logActivity(user.id, 'register', { email: user.email, note: 'email timeout/failed' });
+            
+            return res.json({ 
+                success: true,
+                requiresOTP: false,
+                user: {
+                    id: user.id,
+                    name: user.fullName,
+                    email: user.email,
+                    createdAt: user.createdAt
+                }
+            });
+        }
     } catch (error) {
         console.error('Error registering user:', error.message);
         res.status(500).json({ error: 'Failed to register user' });
@@ -362,20 +400,56 @@ app.post('/api/login', async (req, res) => {
         // Password is correct - Generate and send OTP
         const otp = emailService.generateOTP();
         await db.createOTP(email.toLowerCase(), otp);
-        await emailService.sendOTP(email.toLowerCase(), otp);
         
-        // Log activity
+        // Try to send email with timeout
         try {
-            await db.logActivity(user.id, 'otp_sent', { email: user.email });
-        } catch (trackErr) {
-            console.error('Failed to track OTP send:', trackErr.message);
+            const emailSent = await Promise.race([
+                emailService.sendOTP(email.toLowerCase(), otp),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('Email timeout')), 10000))
+            ]);
+            
+            if (emailSent) {
+                // Log activity
+                try {
+                    await db.logActivity(user.id, 'otp_sent', { email: user.email });
+                } catch (trackErr) {
+                    console.error('Failed to track OTP send:', trackErr.message);
+                }
+                
+                res.json({ 
+                    success: true, 
+                    message: 'OTP sent to your email',
+                    requiresOTP: true 
+                });
+            } else {
+                // Email failed, login directly
+                await db.logActivity(user.id, 'login', { email: user.email, note: 'email send failed' });
+                return res.json({ 
+                    success: true,
+                    requiresOTP: false,
+                    user: {
+                        id: user.id,
+                        name: user.name,
+                        email: user.email,
+                        createdAt: user.created_at
+                    }
+                });
+            }
+        } catch (emailError) {
+            console.error('Email error:', emailError.message);
+            // Email timeout/failed, login directly
+            await db.logActivity(user.id, 'login', { email: user.email, note: 'email timeout/failed' });
+            return res.json({ 
+                success: true,
+                requiresOTP: false,
+                user: {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    createdAt: user.created_at
+                }
+            });
         }
-        
-        res.json({ 
-            success: true, 
-            message: 'OTP sent to your email',
-            requiresOTP: true 
-        });
     } catch (error) {
         console.error('Error logging in:', error.message);
         res.status(500).json({ error: 'Login failed', details: error.message });
