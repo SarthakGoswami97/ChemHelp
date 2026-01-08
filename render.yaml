@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: chemhelp
+    env: node
+    buildCommand: npm install && npm rebuild sqlite3
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
