@@ -12,28 +12,42 @@ class EmailService {
     }
 
     initializeTransporter() {
-        // Priority 1: Check for Resend API key (easiest to set up)
+        // Priority 1: Check for Resend API key (most reliable on Render)
         if (process.env.RESEND_API_KEY && !process.env.RESEND_API_KEY.includes('your-')) {
             try {
                 const { Resend } = require('resend');
                 this.resend = new Resend(process.env.RESEND_API_KEY);
                 this.provider = 'resend';
-                console.log('✅ Email service initialized (Resend API)');
+                console.log('✅ Email service initialized (Resend API) - RECOMMENDED FOR RENDER');
                 return;
             } catch (error) {
                 console.error('❌ Failed to initialize Resend:', error.message);
             }
         }
 
-        // Priority 2: Check for SMTP/Nodemailer credentials
+        // Priority 2: Check for SendGrid API key (good alternative)
+        if (process.env.SENDGRID_API_KEY && !process.env.SENDGRID_API_KEY.includes('your-')) {
+            try {
+                const sgMail = require('@sendgrid/mail');
+                sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+                this.sendgrid = sgMail;
+                this.provider = 'sendgrid';
+                console.log('✅ Email service initialized (SendGrid API)');
+                return;
+            } catch (error) {
+                console.error('❌ Failed to initialize SendGrid:', error.message);
+            }
+        }
+
+        // Priority 3: Check for SMTP/Nodemailer credentials (may timeout on Render)
         if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
             // Check if using placeholder values
             if (process.env.EMAIL_USER.includes('your-email') || 
                 process.env.EMAIL_PASS.includes('your-') ||
                 process.env.EMAIL_USER === 'your-email@gmail.com') {
                 console.warn('⚠️  Email credentials are placeholder values. OTP emails will not be sent.');
-                console.warn('   Update EMAIL_USER and EMAIL_PASS in .env file with real credentials');
-                console.warn('   Or use Resend API: set RESEND_API_KEY in .env file');
+                console.warn('   RECOMMENDED: Use Resend (free, reliable on Render)');
+                console.warn('   Set RESEND_API_KEY at resend.com');
                 return;
             }
 
@@ -50,7 +64,9 @@ class EmailService {
                         auth: {
                             user: process.env.EMAIL_USER,
                             pass: process.env.EMAIL_PASS
-                        }
+                        },
+                        connectionTimeout: 5000,
+                        socketTimeout: 5000
                     };
                 } else {
                     transportConfig = {
@@ -58,7 +74,9 @@ class EmailService {
                         auth: {
                             user: process.env.EMAIL_USER,
                             pass: process.env.EMAIL_PASS
-                        }
+                        },
+                        connectionTimeout: 5000,
+                        socketTimeout: 5000
                     };
                 }
 
@@ -73,8 +91,9 @@ class EmailService {
 
         // No email configuration found
         console.warn('⚠️  Email service not configured. OTP verification disabled.');
-        console.warn('   Option 1: Set RESEND_API_KEY (free at resend.com)');
-        console.warn('   Option 2: Set EMAIL_USER and EMAIL_PASS for SMTP');
+        console.warn('   ⭐ RECOMMENDED: Resend API (free, works on Render)');
+        console.warn('      Set RESEND_API_KEY in Render environment variables');
+        console.warn('      Get free key at: https://resend.com');
     }
 
     detectEmailService(email) {
@@ -155,7 +174,26 @@ class EmailService {
             }
         }
 
-        // Use Nodemailer
+        // Use SendGrid
+        if (this.provider === 'sendgrid' && this.sendgrid) {
+            try {
+                await this.sendgrid.send({
+                    to: email,
+                    from: fromEmail,
+                    subject: `${otp} - Your ChemHelp Verification Code`,
+                    html: htmlContent,
+                    text: `Your ChemHelp verification code is: ${otp}\n\nThis code expires in 10 minutes.\n\nIf you didn't request this, please ignore this email.`
+                });
+                console.log(`📧 OTP sent to ${email} via SendGrid`);
+                return true;
+            } catch (error) {
+                console.error('❌ Failed to send OTP via SendGrid:', error.message);
+                console.log(`🔐 OTP for ${email}: ${otp} (email failed, check console)`);
+                return false;
+            }
+        }
+
+        // Use Nodemailer (may timeout on Render with Gmail)
         if (this.provider === 'nodemailer' && this.transporter) {
             try {
                 await this.transporter.sendMail({
@@ -175,7 +213,7 @@ class EmailService {
         }
 
         // Fallback - log to console
-        console.log(`🔐 OTP for ${email}: ${otp} (email not configured)`);
+        console.log(`🔐 OTP for ${email}: ${otp} (email not configured, check server logs)`);
         return false;
     }
 }
